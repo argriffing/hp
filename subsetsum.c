@@ -1,25 +1,4 @@
-// Subset sum.
-//
-// This solves a weird version of the subset sum problem,
-// using the pseudo-polynomial dynamic programming solution.
-// In particular, is implements the dynamic programming algorithm
-// referred to in the last sentence of step 5 of the proof of proposition 4
-// in "Complexity of finding dense subgraphs" by Asahiro et al. 2002.
-//
-// In this variant, the input is a set of components and a target sum.
-// Each component c_i is allowed to contribute some amount to the sum.
-// A component can contribute either 0 (if not chosen)
-// or it can contribute some amount between c_i_low and c_i_high inclusive.
-// The puzzle is to pick which components to use,
-// and how much each component c_i contributes,
-// to exactly attain the target sum if possible.
-
-typedef struct tagS3TABLE {
-  int max_ncomponents;
-  int max_target_sum;
-  int max_table_entries;
-  int *data;
-} S3TABLE;
+#include "subsetsum.h"
 
 void s3table_init(S3TABLE *p, int max_ncomponents, int max_target_sum) {
   p->max_ncomponents = max_ncomponents;
@@ -43,12 +22,17 @@ void s3table_clear(S3TABLE *p, int ncomponents, int target)
   }
 }
 
-int s3table_get(S3Table *p, int component, int partial_sum)
+int s3table_get(S3TABLE *p, int component, int partial_sum)
 {
   return p->data[partial_sum * p->max_ncomponents + component];
 }
 
-void s3table_set(S3Table *p, int component, int partial_sum, int contribution)
+void s3table_attainable(S3TABLE *p, int component, int partial_sum)
+{
+  return s3table_get(p, component, partial_sum) >= 0;
+}
+
+void s3table_set(S3TABLE *p, int component, int partial_sum, int contribution)
 {
   p->data[partial_sum * p->max_ncomponents + component] = contribution;
 }
@@ -86,8 +70,7 @@ int s3table_forward(S3TABLE *p,
     // can be copied to the current column.
     contrib = 0;
     for (prev_part=0; prev_part<=target; ++prev_part) {
-      prev_contrib = s3table_get(p, prev_comp, prev_part);
-      if (prev_contrib >= 0) {
+      if (s3table_attainable(p, prev_comp, prev_part)) {
         s3table_set(p, component, prev_part, contrib)
       }
     }
@@ -97,8 +80,7 @@ int s3table_forward(S3TABLE *p,
     // according to the contribution of the current component.
     for (contrib=low[component]; contrib<=high[component]; ++contrib) {
       for (prev_part=0; prev_part<=target; ++prev_part) {
-        prev_contrib = s3table_get(p, prev_comp, prev_part);
-        if (prev_contrib >= 0) {
+        if (s3table_attainable(p, prev_comp, prev_part)) {
           partial_sum = prev_part + contrib;
           if (partial_sum <= target) {
             s3table_set(p, component, partial_sum, contrib);
@@ -107,16 +89,16 @@ int s3table_forward(S3TABLE *p,
       }
     }
   }
-  int target_is_attainable = s3table_get(p, ncomponents-1, target) >= 0 ? 1 : 0;
-  return target_is_attainable;
+
+  return s3table_attainable(p, ncomponents-1, target);
 }
 
+// The table is expected to have been processed by a forward pass.
+// Returns 1 if the target is attainable, otherwise returns 0.
 int s3table_backward(S3TABLE *p,
     int *low, int *high, int ncomponents, int target, int *contribs_out)
 {
-  // Check that the target is attainable.
-  int target_is_attainable = s3table_get(p, ncomponents-1, target) >= 0 ? 1 : 0;
-  if (!target_is_attainable) {
+  if (!s3table_attainable(p, ncomponents-1, target)) {
     return 0;
   }
 
