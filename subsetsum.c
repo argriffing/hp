@@ -1,3 +1,5 @@
+#include "stdlib.h"
+
 #include "subsetsum.h"
 
 void s3table_init(S3TABLE *p, int max_ncomponents, int max_target_sum) {
@@ -52,7 +54,7 @@ int s3table_forward(S3TABLE *p,
   contrib = 0;
   partial_sum = contrib;
   s3table_set(p, component, partial_sum, contrib);
-  for (contrib=low[component]; contrib<=high[component], ++contrib) {
+  for (contrib=low[component]; contrib<=high[component]; ++contrib) {
     partial_sum = contrib;
     s3table_set(p, component, partial_sum, contrib);
   }
@@ -61,7 +63,7 @@ int s3table_forward(S3TABLE *p,
   int prev_comp;
   int prev_part;
   int prev_contrib;
-  for (component=1; component<ncomponets-1; ++component)
+  for (component=1; component<ncomponents-1; ++component)
   {
     int prev_comp = component - 1;
 
@@ -71,7 +73,7 @@ int s3table_forward(S3TABLE *p,
     contrib = 0;
     for (prev_part=0; prev_part<=target; ++prev_part) {
       if (s3table_attainable(p, prev_comp, prev_part)) {
-        s3table_set(p, component, prev_part, contrib)
+        s3table_set(p, component, prev_part, contrib);
       }
     }
 
@@ -114,7 +116,7 @@ int s3table_backward(S3TABLE *p,
   int current_target = target;
   int contrib;
   for (component=ncomponents-1; component>=0; --component) {
-    contrib = s3table.get(p, component, target);
+    contrib = s3table_get(p, component, target);
     contribs_out[component] = contrib;
     target -= contrib;
   }

@@ -23,29 +23,37 @@ int test(const char *test_name,
     }
   }
 
-  printf("failed a test\n");
-  printf("test name: %s\n", test_name);
-  
-  printf("target sum: %d\n", target);
+  if (failflag)
+  {
 
-  printf("low component values: ");
-  for (i=0; i<ncomponents; ++i) {
-    printf("%4d ", low[i]);
-  }
+    printf("failed a test\n");
+    printf("test name: %s\n", test_name);
+    
+    printf("target sum: %d\n", target);
 
-  printf("high component values: ");
-  for (i=0; i<ncomponents; ++i) {
-    printf("%4d ", high[i]);
-  }
+    printf("component values: ");
+    for (i=0; i<ncomponents; ++i) {
+      if (low[i] == high[i]) {
+        printf("%d ", low[i]);
+      } else {
+        printf("%d..%d ", low[i], high[i]);
+      }
+    }
+    printf("\n");
 
-  printf("expected component contribs: ");
-  for (i=0; i<ncomponents; ++i) {
-    printf("%4d ", expected[i]);
-  }
+    printf("expected component contribs: ");
+    for (i=0; i<ncomponents; ++i) {
+      printf("%4d ", expected[i]);
+    }
+    printf("\n");
 
-  printf("observed component contribs: ");
-  for (i=0; i<ncomponents; ++i) {
-    printf("%4d ", expected[i]);
+    printf("observed component contribs: ");
+    for (i=0; i<ncomponents; ++i) {
+      printf("%4d ", contribs[i]);
+    }
+    printf("\n");
+
+    printf("\n");
   }
 
   free(contribs);
@@ -54,12 +62,13 @@ int test(const char *test_name,
 
 int t0()
 {
+  char name[] = "first test";
   int low[] = {10, 6, 12};
   int high[] = {10, 8, 12};
-  int expected[] = {1, 0, 1}
+  int expected[] = {1, 0, 1};
   int ncomponents = 3;
-  int target = 21;
-  return test(low, high, expected, ncomponets, target);
+  int target = 22;
+  return test(name, low, high, expected, ncomponents, target);
 }
 
 int main()
@@ -69,7 +78,7 @@ int main()
   nfails += t0();
 
   if (nfails) {
-    printf("failed testing: %d tests failed", nfails);
+    printf("failed testing: %d tests failed\n", nfails);
   } else {
     printf("success: all tests passed\n");
   }
