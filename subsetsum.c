@@ -65,7 +65,7 @@ int s3table_forward(S3TABLE *p,
   int prev_comp;
   int prev_part;
   int prev_contrib;
-  for (component=1; component<ncomponents-1; ++component)
+  for (component=1; component<ncomponents; ++component)
   {
     int prev_comp = component - 1;
 

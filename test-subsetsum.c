@@ -54,6 +54,16 @@ int test(const char *test_name,
     }
     printf("\n");
 
+    printf("dynamic programming table:\n");
+    int partial_sum, component;
+    for (partial_sum=0; partial_sum<=target; ++partial_sum) {
+      for (component=0; component<ncomponents; ++component) {
+        printf("%4d", s3table_get(&t, component, partial_sum));
+      }
+      printf("\n");
+    }
+    printf("\n");
+
     printf("\n");
   }
 
