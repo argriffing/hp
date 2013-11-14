@@ -33,7 +33,7 @@ void s3table_clear(S3TABLE *p, int ncomponents, int target);
 
 int s3table_get(S3TABLE *p, int component, int partial_sum);
 
-void s3table_attainable(S3TABLE *p, int component, int partial_sum);
+int s3table_attainable(S3TABLE *p, int component, int partial_sum);
 
 void s3table_set(S3TABLE *p, int component, int partial_sum, int contribution);
 
@@ -45,7 +45,7 @@ int s3table_forward(S3TABLE *p,
 // The table is expected to have been processed by a forward pass.
 // Returns 1 if the target is attainable, otherwise returns 0.
 int s3table_backward(S3TABLE *p,
-    int *low, int *high, int ncomponents, int target, int *contribs_out);
+    int ncomponents, int target, int *contribs_out);
 
 #endif
 

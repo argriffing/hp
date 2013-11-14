@@ -27,7 +27,7 @@ int s3table_get(S3TABLE *p, int component, int partial_sum)
   return p->data[partial_sum * p->max_ncomponents + component];
 }
 
-void s3table_attainable(S3TABLE *p, int component, int partial_sum)
+int s3table_attainable(S3TABLE *p, int component, int partial_sum)
 {
   return s3table_get(p, component, partial_sum) >= 0;
 }
@@ -96,16 +96,22 @@ int s3table_forward(S3TABLE *p,
 // The table is expected to have been processed by a forward pass.
 // Returns 1 if the target is attainable, otherwise returns 0.
 int s3table_backward(S3TABLE *p,
-    int *low, int *high, int ncomponents, int target, int *contribs_out)
+    int ncomponents, int target, int *contribs_out)
 {
+  int component;
+
+  // If the target is not attainable then return 0
+  // and fill the contribs with -1.
   if (!s3table_attainable(p, ncomponents-1, target)) {
+    for (component=0; component<ncomponents; ++component) {
+      contribs_out[component] = -1;
+    }
     return 0;
   }
 
   // Trace back through the dynamic programming table,
   // extracting the contribution of each component.
   int current_target = target;
-  int component;
   int contrib;
   for (component=ncomponents-1; component>=0; --component) {
     contrib = s3table.get(p, component, target);
