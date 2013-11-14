@@ -5,7 +5,7 @@
 void s3table_init(S3TABLE *p, int max_ncomponents, int max_target_sum) {
   p->max_ncomponents = max_ncomponents;
   p->max_target_sum = max_target_sum;
-  p->max_table_entries = max_ncomponents * max_target_sum;
+  p->max_table_entries = max_ncomponents * (max_target_sum + 1);
   p->data = (int *) malloc(p->max_table_entries * sizeof(int));
 }
 
@@ -17,7 +17,7 @@ void s3table_destroy(S3TABLE *p)
 void s3table_clear(S3TABLE *p, int ncomponents, int target)
 {
   int i, j;
-  for (i=0; i<target; ++i) {
+  for (i=0; i<=target; ++i) {
     for (j=0; j<ncomponents; ++j) {
       p->data[i*p->max_ncomponents + j] = -1;
     }
@@ -56,7 +56,9 @@ int s3table_forward(S3TABLE *p,
   s3table_set(p, component, partial_sum, contrib);
   for (contrib=low[component]; contrib<=high[component]; ++contrib) {
     partial_sum = contrib;
-    s3table_set(p, component, partial_sum, contrib);
+    if (partial_sum <= target) {
+      s3table_set(p, component, partial_sum, contrib);
+    }
   }
 
   // Fill the rest of the columns of the table one by one.
