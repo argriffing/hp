@@ -2,6 +2,42 @@
 // Component label -1 means unlabeled.
 // Parent -2 means root.
 // Parent -1 means not visited by depth first search.
+//
+// Connected components in csr format.
+
+
+typedef struct tagLOCALGRAPH {
+
+  // This is the number of local vertices.
+  int nvertices;
+
+  // Points somewhere in ccgraph.compo_row_ptr.
+  int *row_ptr;
+
+  // Points somewhere in ccgraph.compo_ind_ptr.
+  int *ind_ptr;
+
+  // Points somewhere in ccgraph.local_to_global.
+  // Maps local vertex indices to global vertex indices.
+  int *local_to_global;
+
+} LOCALGRAPH;
+
+
+typedef struct tagCCGRAPH {
+  int nvertices;
+  int ncomponents;
+  LOCALGRAPH *subgraphs;
+  int *global_to_local; // length is nvertices
+  int *local_to_global; // length is nvertices
+  int *compo_row_ptr; // length is nvertices + 1
+  int *compo_ind_ptr; // length is nedges
+} CCGRAPH;
+
+void ccgraph_init(CCGRAPH *p,
+    const int *row_ptr, const int *col_ind, int nvertices)
+{
+}
 
 // Get the connected component associated with a single vertex.
 // This is a helper for the function that gets all connected
