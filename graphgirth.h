@@ -13,13 +13,17 @@
 // The degree of vertex v is row_ptr[v+1] - row_ptr[v].
 
 
+#ifndef GRAPHGIRTH_HEADER
+#define GRAPHGIRTH_HEADER
+
+
 // Get the length of the smallest cycle detected from topo sort rooted at r.
 // This is an upper bound on the girth of the graph.
 // The _ws suffixed arrays should be of length nvertices
 // and are for temporary storage.
 int get_girth_ub(
     const int *row_ptr, const int *col_ind, int nvertices, int r,
-    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws,
+    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws
     );
 
 // Get the smallest cycle containing vertex r.
@@ -31,3 +35,4 @@ int get_smallest_cycle_ub(
     int *cycle_out, int *ncycle_out
     );
 
+#endif

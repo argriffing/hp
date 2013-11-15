@@ -81,7 +81,7 @@ void _girth_ub_helper(
 // and are for temporary storage.
 int get_girth_ub(
     const int *row_ptr, const int *col_ind, int nvertices, int r,
-    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws,
+    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws
     )
 {
   int min_length, va, vb;
@@ -112,6 +112,7 @@ int get_smallest_cycle_ub(
   // Use the parent_ws output from the helper function
   // to trace both vertices back to the root.
   int i, v;
+  int na, nb;
 
   v = va;
   na = 0;
@@ -137,13 +138,12 @@ int get_smallest_cycle_ub(
 
   // Count the number of shared edges in the trace.
   int root_length = 0;
-  while (va_trace[na-2-root_length] == vb_trace[n-2-root_length]) {
+  while (va_trace[na-2-root_length] == vb_trace[nb-2-root_length]) {
     ++root_length;
   }
 
   // Begin building the cycle.
   *ncycle_out = 0;
-  int i;
 
   // Add the non-shared nodes of the first trace to the cycle.
   // Include the most recent common ancestor of the two traces.
@@ -160,7 +160,7 @@ int get_smallest_cycle_ub(
 
 // Get the length of the smallest cycle and a vertex on the cycle.
 int get_girth_and_vertex(
-    const int *row_ptr, const int *col_ind, int nvertices,
+    const int *row_ptr, const int *col_ind, int nvertices
     )
 {
   assert(0);
@@ -171,7 +171,7 @@ int get_girth_and_vertex(
 // This function is restricted to connected graphs.
 // It treats degree-two vertices more efficiently.
 int get_girth_and_vertex_conn(
-    const int *row_ptr, const int *col_ind, int nvertices,
+    const int *row_ptr, const int *col_ind, int nvertices
     )
 {
   assert(0);

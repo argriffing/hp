@@ -1,4 +1,8 @@
+#include "stdio.h"
+#include "stdlib.h"
+
 #include "graphgirth.h"
+
 
 // Sparse matrix format conversion.
 // List of lists to compressed row storage.
@@ -15,7 +19,7 @@ int t0()
   // The smallest cycle of this graph is {7, 8, 10, 9}.
   // If you root at early nodes like < 5 then you will
   // not find that cycle using a topo sort detection.
-  int lil = {
+  int lil[] = {
     0, 1,
     1, 2,
     1, 3,
@@ -30,7 +34,7 @@ int t0()
     9, 10,
     11, 12,
     12, 10,
-  }
+  };
   int nvertices = 13;
   int nedges = 14;
   int *row_ptr = (int *) malloc((nvertices + 1) * sizeof(int));
@@ -39,6 +43,8 @@ int t0()
 
   free(row_ptr);
   free(col_ind);
+
+  return 1;
 }
 
 
