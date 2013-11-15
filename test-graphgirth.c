@@ -66,6 +66,8 @@ int t0()
   int *next_ws = (int *) malloc(nvertices * sizeof(int));
   int girth_ub = get_girth_ub(row_ptr, col_ind, nvertices, root,
       parent_ws, depth_ws, deck_ws, next_ws);
+  int girth = get_girth(row_ptr, col_ind, nvertices,
+      parent_ws, depth_ws, deck_ws, next_ws);
   free(parent_ws);
   free(depth_ws);
   free(deck_ws);
@@ -73,6 +75,10 @@ int t0()
 
   printf("root: %d\n", root);
   printf("girth upper bound: %d\n", girth_ub);
+  printf("\n");
+
+  printf("girth: %d\n", girth);
+  printf("\n");
 
   free(row_ptr);
   free(col_ind);

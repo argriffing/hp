@@ -99,7 +99,7 @@ int get_girth_ub(
   return min_length;
 }
 
-// Get the length of the smallest cycle detected from topo sort rooted at r.
+// Get the smallest cycle detected from topo sort rooted at r.
 // The length of this cycle is an upper bound
 // on the smallest cycle in the graph.
 int get_smallest_cycle_ub(
@@ -164,6 +164,27 @@ int get_smallest_cycle_ub(
   for (i=nb-root_length-2; i>=0; ++i) {
     cycle_out[(*ncycle_out)++] = vb_trace[i];
   }
+}
+
+
+// Get the length of the smallest cycle in the graph.
+int get_girth(const int *row_ptr, const int *col_ind, int nvertices,
+    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws
+    )
+{
+  // Take the minimum over the minimum cycles observed
+  // over all topo sorts over all roots.
+  int girth = -1;
+  int min_length;
+  int root;
+  for (root=0; root<nvertices; ++root) {
+    int min_length = get_girth_ub(row_ptr, col_ind, nvertices, root,
+        parent_ws, depth_ws, deck_ws, next_ws);
+    if (girth < 0 || min_length < girth) {
+      girth = min_length;
+    }
+  }
+  return girth;
 }
 
 // Get the length of the smallest cycle and a vertex on the cycle.
