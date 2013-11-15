@@ -6,6 +6,7 @@
 // Connected components in csr format.
 
 #include "stdlib.h"
+#include "assert.h"
 
 
 // The idea of this structure is to avoid malloc/free in an inner loop.
@@ -50,38 +51,13 @@ void ccgraph_init(CCGRAPH *p, int max_nvertices, int max_nedges)
   p->compo_col_ind = (int *) malloc(max_nedges * sizeof(int));
 }
 
-
-// This function assumes that the ccgraph has already been initialized.
-void ccgraph_compute(CCGRAPH *p,
-    const int *row_ptr, const int *col_ind, int nvertices,
-    int *parent_ws, int *deck_ws, int *next_ws,
-    int *component_labels
-    )
+void ccgraph_destroy(CCGRAPH *p)
 {
-  p->ncomponents = 0;
-  p->nvertices = 0;
-  p->nedges = 0;
-  p->compo_row_ptr[p->nvertices] = 0;
-
-  // Set all component labels and all parent vertices to -1.
-  int v;
-  for (v=0; v<nvertices; ++v) {
-    component_labels[v] = -1;
-    parent_ws[v] = -1;
-  }
-
-  // For each vertex that has not been assigned a component,
-  // flood fill a component rooted at that vertex.
-  // The helper function does post-processing including
-  // incrementing the number of components.
-  int root;
-  for (root=0; root<nvertices; ++root) {
-    if (component_labels[root] < 0) {
-      _ccgraph_compute_component(p, row_ptr, col_ind,
-          parent_ws, deck_ws, next_ws,
-          root, component_labels);
-    }
-  }
+  free(p->subgraph);
+  free(p->global_to_local);
+  free(p->local_to_global);
+  free(p->compo_row_ptr);
+  free(p->compo_col_ind);
 }
 
 
@@ -225,12 +201,41 @@ void _ccgraph_compute_component(CCGRAPH *p,
 }
 
 
-void ccgraph_destroy(CCGRAPH *p)
+// This function assumes that the ccgraph has already been initialized.
+void ccgraph_compute(CCGRAPH *p,
+    const int *row_ptr, const int *col_ind, int nvertices,
+    int *parent_ws, int *deck_ws, int *next_ws,
+    int *component_labels
+    )
 {
-  free(p->subgraph);
-  free(p->global_to_local);
-  free(p->local_to_global);
-  free(p->compo_row_ptr);
-  free(p->compo_col_ind);
+  p->ncomponents = 0;
+  p->nvertices = 0;
+  p->nedges = 0;
+  p->compo_row_ptr[p->nvertices] = 0;
+
+  // Set all component labels and all parent vertices to -1.
+  int v;
+  for (v=0; v<nvertices; ++v) {
+    component_labels[v] = -1;
+    parent_ws[v] = -1;
+  }
+
+  // For each vertex that has not been assigned a component,
+  // flood fill a component rooted at that vertex.
+  // The helper function does post-processing including
+  // incrementing the number of components.
+  int root;
+  for (root=0; root<nvertices; ++root) {
+    if (component_labels[root] < 0) {
+      _ccgraph_compute_component(p, row_ptr, col_ind,
+          parent_ws, deck_ws, next_ws,
+          root, component_labels);
+    }
+  }
 }
+
+
+
+
+
 
