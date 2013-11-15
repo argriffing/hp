@@ -37,6 +37,26 @@ typedef struct tagCCGRAPH {
   int *compo_col_ind; // length is nedges
 } CCGRAPH;
 
+void _ccgraph_check_component(CCGRAPH *p, int component) {
+  assert(0 <= component);
+  assert(component < p->ncomponents);
+}
+
+int ccgraph_get_component_nvertices(CCGRAPH *p, int component) {
+  _ccgraph_check_component(p, component);
+  return p->subgraph[component].nvertices;
+}
+
+int *ccgraph_get_component_row_ptr(CCGRAPH *p, int component) {
+  _ccgraph_check_component(p, component);
+  return p->subgraph[component].row_ptr;
+}
+
+int *ccgraph_get_component_col_ind(CCGRAPH *p, int component) {
+  _ccgraph_check_component(p, component);
+  return p->compo_col_ind;
+}
+
 
 // This function needs to be called only once per application,
 // if the max number of vertices and max number of edges is known.
