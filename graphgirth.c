@@ -1,4 +1,5 @@
 #include "assert.h"
+#include "stdio.h"
 
 #include "graphgirth.h"
 
@@ -41,7 +42,9 @@ void _girth_ub_helper(
   while (ndeck)
   {
     int nnext = 0;
-    for (v=0; v<ndeck; ++v) {
+    int ideck;
+    for (ideck=0; ideck<ndeck; ++ideck) {
+      v = deck_ws[ideck];
       for (i=row_ptr[v]; i<row_ptr[v+1]; ++i) {
         int w = col_ind[i];
         if (w != parent_ws[v]) {
@@ -54,6 +57,11 @@ void _girth_ub_helper(
           if (parent_ws[w] >= 0) {
             int cycle_length = depth_ws[v] + depth_ws[w] + 1;
             if (*min_length < 0 || cycle_length < *min_length) {
+              printf("(v, w): (%d, %d)\n", v, w);
+              printf("depth of v: %d\n", depth_ws[v]);
+              printf("depth of w: %d\n", depth_ws[w]);
+              printf("cycle length %d\n", cycle_length);
+              printf("\n");
               *min_length = cycle_length;
               *va_out = v;
               *vb_out = w;
@@ -91,7 +99,7 @@ int get_girth_ub(
   return min_length;
 }
 
-// Get the smallest cycle containing vertex r.
+// Get the length of the smallest cycle detected from topo sort rooted at r.
 // The length of this cycle is an upper bound
 // on the smallest cycle in the graph.
 int get_smallest_cycle_ub(

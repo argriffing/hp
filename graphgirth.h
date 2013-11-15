@@ -26,7 +26,7 @@ int get_girth_ub(
     int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws
     );
 
-// Get the smallest cycle containing vertex r.
+// Get the length of the smallest cycle detected from topo sort rooted at r.
 // The length of this cycle is an upper bound
 // on the smallest cycle in the graph.
 int get_smallest_cycle_ub(
