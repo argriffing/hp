@@ -1,41 +1,8 @@
-// Conventions:
-// Component label -1 means unlabeled.
-// Parent -2 means root.
-// Parent -1 means not visited by depth first search.
-//
-// Connected components in csr format.
-
 #include "stdlib.h"
 #include "assert.h"
 
+#include "connectedcomponents.h"
 
-// The idea of this structure is to avoid malloc/free in an inner loop.
-// This structure should not own the memory referenced by any of its pointers.
-typedef struct tagSUBGRAPH {
-
-  // This is the number of local vertices.
-  int nvertices;
-
-  // Points somewhere in ccgraph.compo_row_ptr.
-  int *row_ptr;
-
-  // Points somewhere in ccgraph.local_to_global.
-  // Maps local vertex indices to global vertex indices.
-  int *local_to_global;
-
-} SUBGRAPH;
-
-
-typedef struct tagCCGRAPH {
-  int nvertices;
-  int ncomponents;
-  int nedges;
-  SUBGRAPH *subgraph; // length is nvertices (as upper bound on ncomponents)
-  int *global_to_local; // length is nvertices
-  int *local_to_global; // length is nvertices
-  int *compo_row_ptr; // length is nvertices + 1
-  int *compo_col_ind; // length is nedges
-} CCGRAPH;
 
 void _ccgraph_check_component(CCGRAPH *p, int component) {
   assert(0 <= component);
@@ -233,11 +200,15 @@ void ccgraph_compute(CCGRAPH *p,
   p->nedges = 0;
   p->compo_row_ptr[p->nvertices] = 0;
 
-  // Set all component labels and all parent vertices to -1.
   int v;
+
+  // Set all component labels and all parent vertices to -1.
+  // Set the local/global index conversion map entries to -1.
   for (v=0; v<nvertices; ++v) {
     component_labels[v] = -1;
     parent_ws[v] = -1;
+    p->local_to_global[v] = -1;
+    p->global_to_local[v] = -1;
   }
 
   // For each vertex that has not been assigned a component,
