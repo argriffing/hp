@@ -1,18 +1,6 @@
-// Find the shortest cycle in an undirected unweighted graph.
-//
-// The length of the shortest cycle is called the girth of the graph.
-// The strategy is to do a depth first search from each vertex.
-//
-// Use the 'compressed row storage' as the graph format.
-// http://web.eecs.utk.edu/~dongarra/etemplates/node373.html
-// This uses two arrays.
-// One array gives the offset corresponding to vertex i.
-// The other array gives the sink vertex.
-// I will use the somewhat common notation row_ptr and col_ind,
-// together with the number of vertices n.
-// The degree of vertex v is row_ptr[v+1] - row_ptr[v].
-
 #include "assert.h"
+
+#include "graphgirth.h"
 
 
 // Get the two nodes furthest away from vertex r
