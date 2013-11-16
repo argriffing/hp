@@ -47,20 +47,46 @@ int t0()
   int *parent_ws = (int *) malloc(nvertices * sizeof(int));
   int *deck_ws = (int *) malloc(nvertices * sizeof(int));
   int *next_ws = (int *) malloc(nvertices * sizeof(int));
+  int *component_labels = (int *) malloc(nvertices * sizeof(int));
 
   // Init the connected components search object.
   CCGRAPH g;
-  ccgraph_init(&g, nvertices, nedges);
+  ccgraph_init(&g, nvertices, 2 * nedges);
 
   // Do the connected components search.
   ccgraph_compute(&g, row_ptr, col_ind, nvertices,
       parent_ws, deck_ws, next_ws,
       component_labels);
 
+  printf("%d connected components were detected\n", g.ncomponents);
+  printf("\n");
+
+  printf("connected component graphs:\n");
+  int component, i;
+  int v_local, v_global;
+  int w_local, w_global;
+  for (component=0; component<g.ncomponents; ++component) {
+    printf("component %d:\n", component);
+    int compo_nvertices = ccgraph_get_component_nvertices(&g, component);
+    int *compo_row_ptr = ccgraph_get_component_row_ptr(&g, component);
+    int *compo_col_ind = ccgraph_get_component_col_ind(&g, component);
+    for (v_local=0; v_local<compo_nvertices; ++v_local) {
+      for (i=compo_row_ptr[v_local]; i<compo_row_ptr[v_local+1]; ++i) {
+        w_local = compo_col_ind[i];
+        v_global = ccgraph_local_to_global(&g, component, v_local);
+        w_global = ccgraph_local_to_global(&g, component, w_local);
+        printf("  %d--%d\n", v_global, w_global);
+      }
+    }
+  }
+  printf("\n");
+
+
   // Delete things from the connected components search.
   free(parent_ws);
   free(deck_ws);
   free(next_ws);
+  free(component_labels);
 
   // Init the connected components search object.
   ccgraph_destroy(&g);

@@ -1,4 +1,5 @@
 #include "stdlib.h"
+#include "stdio.h"
 #include "assert.h"
 
 #include "connectedcomponents.h"
@@ -22,6 +23,11 @@ int *ccgraph_get_component_row_ptr(CCGRAPH *p, int component) {
 int *ccgraph_get_component_col_ind(CCGRAPH *p, int component) {
   _ccgraph_check_component(p, component);
   return p->compo_col_ind;
+}
+
+int ccgraph_local_to_global(CCGRAPH *p, int component, int v_local) {
+  _ccgraph_check_component(p, component);
+  return p->subgraph[component].local_to_global[v_local];
 }
 
 
@@ -173,6 +179,7 @@ void _ccgraph_compute_component(CCGRAPH *p,
     for (i=row_ptr[v_global]; i<row_ptr[v_global+1]; ++i) {
       w_global = col_ind[i];
       w_local = p->global_to_local[w_global];
+      printf("number of edges: %d\n", p->nedges);
       p->compo_col_ind[p->nedges++] = w_local;
     }
 
@@ -224,9 +231,4 @@ void ccgraph_compute(CCGRAPH *p,
     }
   }
 }
-
-
-
-
-
 

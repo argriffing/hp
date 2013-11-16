@@ -43,6 +43,8 @@ int *ccgraph_get_component_row_ptr(CCGRAPH *p, int component);
 
 int *ccgraph_get_component_col_ind(CCGRAPH *p, int component);
 
+int ccgraph_local_to_global(CCGRAPH *p, int component, int v_local);
+
 
 // This function needs to be called only once per application,
 // if the max number of vertices and max number of edges is known.
