@@ -29,23 +29,24 @@ int t0()
   };
   int nvertices = 13;
   int nedges = 14;
+
+  // Allocate csr memory and convert to csr format.
   int *row_ptr = (int *) malloc((nvertices + 1) * sizeof(int));
   int *col_ind = (int *) malloc(2 * nedges * sizeof(int));
   lil_to_csr(nvertices, nedges, lil, row_ptr, col_ind);
 
   int root = 3;
-  int *parent_ws = (int *) malloc(nvertices * sizeof(int));
+
+  // Allocate memory for the search for the smallest cycle.
+  BFS_WS bfs_ws;
+  bfs_ws_init(&bfs_ws, nvertices);
   int *depth_ws = (int *) malloc(nvertices * sizeof(int));
-  int *deck_ws = (int *) malloc(nvertices * sizeof(int));
-  int *next_ws = (int *) malloc(nvertices * sizeof(int));
+
+  // Compute girth.
   int girth_ub = get_girth_ub(row_ptr, col_ind, nvertices, root,
-      parent_ws, depth_ws, deck_ws, next_ws);
+      &bfs_ws, depth_ws);
   int girth = get_girth(row_ptr, col_ind, nvertices,
-      parent_ws, depth_ws, deck_ws, next_ws);
-  free(parent_ws);
-  free(depth_ws);
-  free(deck_ws);
-  free(next_ws);
+      &bfs_ws, depth_ws);
 
   printf("root: %d\n", root);
   printf("girth upper bound: %d\n", girth_ub);
@@ -53,7 +54,12 @@ int t0()
 
   printf("girth: %d\n", girth);
   printf("\n");
+  
+  // Free girth calculation memory.
+  bfs_ws_destroy(&bfs_ws);
+  free(depth_ws);
 
+  // Free csr memory.
   free(row_ptr);
   free(col_ind);
 

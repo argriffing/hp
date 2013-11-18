@@ -16,6 +16,8 @@
 #ifndef GRAPHGIRTH_HEADER
 #define GRAPHGIRTH_HEADER
 
+#include "breadthfirst.h"
+
 
 // Get the length of the smallest cycle detected from topo sort rooted at r.
 // This is an upper bound on the girth of the graph.
@@ -23,7 +25,7 @@
 // and are for temporary storage.
 int get_girth_ub(
     const int *row_ptr, const int *col_ind, int nvertices, int r,
-    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws
+    BFS_WS *bfs_ws, int *depth_ws
     );
 
 // Get the smallest cycle detected from topo sort rooted at r.
@@ -31,12 +33,12 @@ int get_girth_ub(
 // on the smallest cycle in the graph.
 int get_smallest_cycle_ub(
     const int *row_ptr, const int *col_ind, int nvertices, int r,
-    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws,
+    BFS_WS *bfs_ws, int *depth_ws,
     int *cycle_out, int *ncycle_out
     );
 
 // Get the length of the smallest cycle in the graph.
 int get_girth(const int *row_ptr, const int *col_ind, int nvertices,
-    int *parent_ws, int *depth_ws, int *deck_ws, int *next_ws);
+    BFS_WS *bfs_ws, int *depth_ws);
 
 #endif

@@ -1,10 +1,8 @@
 // Breadth first search workspace.
 
-typedef struct BFS_WS {
-  int *parent;
-  int *deck;
-  int *next;
-} BFS_WS;
+#include "stdlib.h"
+
+#include "breadthfirst.h"
 
 void bfs_ws_init(BFS_WS *p, int max_nvertices) {
   int nbytes = max_nvertices * sizeof(int);
@@ -18,3 +16,4 @@ void bfs_ws_destroy(BFS_WS *p) {
   free(p->deck);
   free(p->next);
 }
+
