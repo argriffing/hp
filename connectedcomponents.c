@@ -15,6 +15,13 @@ int ccgraph_get_component_nvertices(CCGRAPH *p, int component) {
   return p->subgraph[component].nvertices;
 }
 
+int ccgraph_get_component_nedges(CCGRAPH *p, int component) {
+  _ccgraph_check_component(p, component);
+  int nvertices = p->subgraph[component].nvertices;
+  int *row_ptr = p->subgraph[component].row_ptr;
+  return row_ptr[nvertices] - row_ptr[0];
+}
+
 int *ccgraph_get_component_row_ptr(CCGRAPH *p, int component) {
   _ccgraph_check_component(p, component);
   return p->subgraph[component].row_ptr;

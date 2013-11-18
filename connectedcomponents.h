@@ -39,6 +39,8 @@ typedef struct tagCCGRAPH {
 
 int ccgraph_get_component_nvertices(CCGRAPH *p, int component);
 
+int ccgraph_get_component_nedges(CCGRAPH *p, int component);
+
 int *ccgraph_get_component_row_ptr(CCGRAPH *p, int component);
 
 int *ccgraph_get_component_col_ind(CCGRAPH *p, int component);

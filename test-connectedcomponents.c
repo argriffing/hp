@@ -78,6 +78,10 @@ int t0()
         printf("  %d--%d\n", v_global, w_global);
       }
     }
+    int compo_nedges = ccgraph_get_component_nedges(&g, component);
+    printf("%d vertices\n", compo_nvertices);
+    printf("%d edges\n", compo_nedges);
+    printf("\n");
   }
   printf("\n");
 
