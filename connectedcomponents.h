@@ -8,6 +8,8 @@
 #ifndef CONNECTEDCOMPONENTS_HEADER
 #define CONNECTEDCOMPONENTS_HEADER
 
+#include "breadthfirst.h"
+
 
 // The idea of this structure is to avoid malloc/free in an inner loop.
 // This structure should not own the memory referenced by any of its pointers.
@@ -59,7 +61,7 @@ void ccgraph_destroy(CCGRAPH *p);
 // This function is not specific to ccgraph.
 void compute_component(
     const int *row_ptr, const int *col_ind,
-    int *parent_ws, int *deck_ws, int *next_ws,
+    BFS_WS *bfs_ws,
     int root, int label, int *component_labels,
     int *vertices_out, int *nvertices_out
     );
@@ -67,7 +69,7 @@ void compute_component(
 // This function assumes that the ccgraph has already been initialized.
 void ccgraph_compute(CCGRAPH *p,
     const int *row_ptr, const int *col_ind, int nvertices,
-    int *parent_ws, int *deck_ws, int *next_ws,
+    BFS_WS *bfs_ws,
     int *component_labels
     );
 

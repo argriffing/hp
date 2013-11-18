@@ -3,6 +3,7 @@
 #include "assert.h"
 
 #include "connectedcomponents.h"
+#include "breadthfirst.h"
 
 
 void _ccgraph_check_component(CCGRAPH *p, int component) {
@@ -64,7 +65,7 @@ void ccgraph_destroy(CCGRAPH *p)
 // This function is not specific to ccgraph.
 void compute_component(
     const int *row_ptr, const int *col_ind,
-    int *parent_ws, int *deck_ws, int *next_ws,
+    BFS_WS *bfs_ws,
     int root, int label, int *component_labels,
     int *vertices_out, int *nvertices_out
     )
@@ -76,11 +77,11 @@ void compute_component(
 
   // The root parent should be unknown (-1).
   // Set it to -2 to indicate that it is the root.
-  assert(parent_ws[root] == -1);
-  parent_ws[root] = -2;
+  assert(bfs_ws->parent[root] == -1);
+  bfs_ws->parent[root] = -2;
 
   // The root vertex is on deck for breadth first search.
-  deck_ws[0] = root;
+  bfs_ws->deck[0] = root;
   int ndeck = 1;
 
   // Do the breadth first search.
@@ -91,7 +92,7 @@ void compute_component(
     int nnext = 0;
     int ideck;
     for (ideck=0; ideck<ndeck; ++ideck) {
-      int v = deck_ws[ideck];
+      int v = bfs_ws->deck[ideck];
 
       // Update the map from the local to the global vertex index.
       // Increment the vertex count to include the added vertex.
@@ -100,23 +101,23 @@ void compute_component(
       int i;
       for (i=row_ptr[v]; i<row_ptr[v+1]; ++i) {
         int w = col_ind[i];
-        if (w != parent_ws[v]) {
-          if (parent_ws[w] >= 0) {
+        if (w != bfs_ws->parent[v]) {
+          if (bfs_ws->parent[w] >= 0) {
             assert(component_labels[w] == label);
           } else {
             assert(component_labels[w] == -1);
             component_labels[w] = label;
-            parent_ws[w] = v;
-            next_ws[nnext++] = w;
+            bfs_ws->parent[w] = v;
+            bfs_ws->next[nnext++] = w;
           }
         }
       }
     }
 
     // Put the next array on deck.
-    int *tmp = deck_ws;
-    deck_ws = next_ws;
-    next_ws = tmp;
+    int *tmp = bfs_ws->deck;
+    bfs_ws->deck = bfs_ws->next;
+    bfs_ws->next = tmp;
     ndeck = nnext;
   }
 }
@@ -136,7 +137,7 @@ void compute_component(
 //
 void _ccgraph_compute_component(CCGRAPH *p,
     const int *row_ptr, const int *col_ind,
-    int *parent_ws, int *deck_ws, int *next_ws,
+    BFS_WS *bfs_ws,
     int root, int *component_labels
     )
 {
@@ -155,7 +156,7 @@ void _ccgraph_compute_component(CCGRAPH *p,
 
   // Compute the connected component.
   compute_component(row_ptr, col_ind,
-      parent_ws, deck_ws, next_ws,
+      bfs_ws,
       root, label, component_labels,
       subgraph->local_to_global, &subgraph->nvertices);
 
@@ -170,7 +171,7 @@ void _ccgraph_compute_component(CCGRAPH *p,
     v_global = subgraph->local_to_global[v_local];
 
     // Reset the vertex parent.
-    parent_ws[v_global] = -1;
+    bfs_ws->parent[v_global] = -1;
 
     // Fill the global to local map.
     p->global_to_local[v_global] = v_local;
@@ -205,7 +206,7 @@ void _ccgraph_compute_component(CCGRAPH *p,
 // This function assumes that the ccgraph has already been initialized.
 void ccgraph_compute(CCGRAPH *p,
     const int *row_ptr, const int *col_ind, int nvertices,
-    int *parent_ws, int *deck_ws, int *next_ws,
+    BFS_WS *bfs_ws,
     int *component_labels
     )
 {
@@ -220,7 +221,7 @@ void ccgraph_compute(CCGRAPH *p,
   // Set the local/global index conversion map entries to -1.
   for (v=0; v<nvertices; ++v) {
     component_labels[v] = -1;
-    parent_ws[v] = -1;
+    bfs_ws->parent[v] = -1;
     p->local_to_global[v] = -1;
     p->global_to_local[v] = -1;
   }
@@ -233,7 +234,7 @@ void ccgraph_compute(CCGRAPH *p,
   for (root=0; root<nvertices; ++root) {
     if (component_labels[root] < 0) {
       _ccgraph_compute_component(p, row_ptr, col_ind,
-          parent_ws, deck_ws, next_ws,
+          bfs_ws,
           root, component_labels);
     }
   }

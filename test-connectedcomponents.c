@@ -2,6 +2,7 @@
 #include "stdlib.h"
 
 #include "sparsetools.h"
+#include "breadthfirst.h"
 #include "connectedcomponents.h"
 
 int t0()
@@ -44,9 +45,8 @@ int t0()
   lil_to_csr(nvertices, nedges, lil, row_ptr, col_ind);
 
   // Allocate things for the connected components search.
-  int *parent_ws = (int *) malloc(nvertices * sizeof(int));
-  int *deck_ws = (int *) malloc(nvertices * sizeof(int));
-  int *next_ws = (int *) malloc(nvertices * sizeof(int));
+  BFS_WS bfs_ws;
+  bfs_ws_init(&bfs_ws, nvertices);
   int *component_labels = (int *) malloc(nvertices * sizeof(int));
 
   // Init the connected components search object.
@@ -55,7 +55,7 @@ int t0()
 
   // Do the connected components search.
   ccgraph_compute(&g, row_ptr, col_ind, nvertices,
-      parent_ws, deck_ws, next_ws,
+      &bfs_ws,
       component_labels);
 
   printf("%d connected components were detected\n", g.ncomponents);
@@ -87,9 +87,7 @@ int t0()
 
 
   // Delete things from the connected components search.
-  free(parent_ws);
-  free(deck_ws);
-  free(next_ws);
+  bfs_ws_destroy(&bfs_ws);
   free(component_labels);
 
   // Init the connected components search object.
