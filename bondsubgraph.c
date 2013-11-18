@@ -28,15 +28,48 @@ typedef struct tagBSG_COMPONENT {
 } BSG_COMPONENT;
 
 
-// The input argument k defines the number of vertices to be selected.
-// The first k entries of the selection output array
+// Reorder vertices within a connected component of an undirected graph
+// so that the vertices in the smallest cycle are before the other vertices,
+// and so that each vertex is adjacent to a vertex somewhere
+// before it in the vertex list.
+// The length of the smallest cycle, also called the girth, is returned.
+// If the component has no cycle, then return -1 to represent an infinite girth
+// and do not change the vertex order.
+int _move_smallest_cycle_to_front(
+    const int *row_ptr, const int *col_ind, int nvertices,
+    CCGRAPH *ccgraph,
+    BSG_COMPONENT *bsgcomponent)
+{
+}
+
+
+// Get the set of vertices defining the densest induced k-subgraph.
+//
+// Inputs:
+// A graph in csr format.
+// A decomposition of the graph into connected components.
+// An argument k defining the number of vertices to be selected.
+// Another input is a workspace for bsg components;
+// this is just a BSG_COMPONENT array at least as long as the
+// number of components (which is bounded above by the number of vertices).
+//
+// Outputs:
+// The first k entries of the selection output array selection_out
 // give the indices of the selected vertices.
 // The number of edges in the induced subgraph will be written
 // to the subgraph_edge_count argument.
+//
 int bsg_get_densest_subgraph(
+    const int *row_ptr, const int *col_ind, int nvertices,
+    CCGRAPH *pccgraph,
     int k,
+    BSG_COMPONENT *bsg_ws, // bond graph component workspace
     int *selection_out, int *subgraph_edge_count
     )
 {
+  int i;
+  for (i=0; i<pccgraph->ncomponents; ++i) {
+    bsg_ws;
+  }
 }
 
