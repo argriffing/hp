@@ -36,10 +36,41 @@ typedef struct tagBSG_COMPONENT {
 // If the component has no cycle, then return -1 to represent an infinite girth
 // and do not change the vertex order.
 int _move_smallest_cycle_to_front(
-    const int *row_ptr, const int *col_ind, int nvertices,
-    CCGRAPH *ccgraph,
-    BSG_COMPONENT *bsgcomponent)
+    const int *row_ptr, const int *col_ind,
+    CCGRAPH *ccgraph, int component)
 {
+  int nedges = ccgraph_get_component_nedges(p, component);
+  int nvertices = ccgraph_get_component_nvertices(p, component);
+  int ell = nedges - nvertices;
+
+  // If the number of vertices is much greater than the number
+  // of edges, then we do not have a connected component.
+  assert(ell >= -1);
+
+  // If the number of vertices is greater than the number of edges
+  // then we have something like a point or path or tree.
+  // In any case we have no cycles, so do not change the order,
+  // and return -1 indicating infinite girth.
+  if (ell == -1) {
+    return -1;
+  }
+
+  // If the number of vertices is equal to the number of edges
+  // then we have a pure cycle.
+  // Because there are no other vertices in this component,
+  // this cycle is already at the front of the vertex list,
+  // so we do not have to reorder any vertices.
+  // The girth is the number of vertices in this cycle.
+  if (ell == 0) {
+    return nvertices;
+  }
+
+  // For more interesting connected components,
+  // each cycle includes at least one vertex of degree at least three.
+  // So we can use a modified topo sort to check each of these vertices
+  // to see which one is part of the smallest cycle in the component.
+
+  return girth;
 }
 
 

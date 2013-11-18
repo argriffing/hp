@@ -38,8 +38,12 @@ void _girth_ub_helper(
   deck_ws[0] = r;
   int ndeck = 1;
 
+  // Stop after the first breadth first search iteration that finds a cycle.
+  // Note that we cannot stop immediately after the first cycle is found,
+  // because cycles found in the same iteration may differ in length
+  // by up to one unit.
   int depth = 0;
-  while (ndeck)
+  while (ndeck && (*min_length < 0))
   {
     int nnext = 0;
     int ideck;
@@ -57,11 +61,11 @@ void _girth_ub_helper(
           if (parent_ws[w] >= 0) {
             int cycle_length = depth_ws[v] + depth_ws[w] + 1;
             if (*min_length < 0 || cycle_length < *min_length) {
-              printf("(v, w): (%d, %d)\n", v, w);
-              printf("depth of v: %d\n", depth_ws[v]);
-              printf("depth of w: %d\n", depth_ws[w]);
-              printf("cycle length %d\n", cycle_length);
-              printf("\n");
+              //printf("(v, w): (%d, %d)\n", v, w);
+              //printf("depth of v: %d\n", depth_ws[v]);
+              //printf("depth of w: %d\n", depth_ws[w]);
+              //printf("cycle length %d\n", cycle_length);
+              //printf("\n");
               *min_length = cycle_length;
               *va_out = v;
               *vb_out = w;
@@ -149,6 +153,10 @@ int get_smallest_cycle_ub(
   while (va_trace[na-2-root_length] == vb_trace[nb-2-root_length]) {
     ++root_length;
   }
+
+  // If the topo search was performed with efficient terminating conditions,
+  // there should be no shared edges.
+  assert(root_length == 0);
 
   // Begin building the cycle.
   *ncycle_out = 0;
