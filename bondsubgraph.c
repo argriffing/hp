@@ -189,10 +189,9 @@ int _cmp_components(const void *a, const void *b)
 }
 
 // Sort an array of component pointers in decreasing order.
-int _qsort_components(BSG_COMPONENT **components, int n)
+void _qsort_components(BSG_COMPONENT **components, int n)
 {
   qsort(components, n, sizeof(BSG_COMPONENT *), _cmp_components);
-  return 0;
 }
 
 // Sort all of the remaining components.
@@ -205,6 +204,33 @@ int _qsort_components(BSG_COMPONENT **components, int n)
 // and just sort the whole thing.
 void solver_sort_components(SOLVER *solver)
 {
+  _qsort_components(solver->components, solver->ncomponents);
+}
+
+
+// The special component has been dealt with.
+// All of the usable components that have a cycle have been moved
+// to the front of the list of components.
+// If the sum of their vertices is at least as large as k,
+// then we will try to solve a subset sum problem
+// to get k edges using k vertices.
+// If k is greater than the sum of the vertices,
+// then the subset sum problem has no solution so we skip it.
+void solver_subset_sum(SOLVER *solver,
+    )
+{
+  // Get the number of available components that have cycles.
+  // Get the sum of vertices of these components.
+  int ncyclic_components = 0;
+  int ncyclic_vertices = 0;
+  int found_acyclic_component = 0;
+  int c;
+  for (c=0; c<ncomponents; ++c)
+  {
+    if (solver->components[c]->girth > 0) {
+      assert(!found_acyclic_component); // this violates the sort order
+    }
+  }
 }
 
 
