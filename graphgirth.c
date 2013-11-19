@@ -171,7 +171,7 @@ int get_smallest_cycle_ub(
 
   // Add the non-shared nodes of the second trace to the cycle.
   // Do not include the most recent common ancestor of the two traces.
-  for (i=nb-root_length-2; i>=0; ++i) {
+  for (i=nb-root_length-2; i>=0; --i) {
     cycle_out[(*ncycle_out)++] = vb_trace[i];
   }
 }

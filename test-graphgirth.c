@@ -4,9 +4,10 @@
 #include "sparsetools.h"
 #include "graphgirth.h"
 
-int _girth_conn_helper(int *lil, int nvertices, int nedges, int girth)
-{
 
+int _girth_conn_helper(int *lil, int nvertices, int nedges,
+    int girth, int *expected_small_cycle)
+{
   // Allocate csr memory and convert to csr format.
   int *row_ptr = (int *) malloc((nvertices + 1) * sizeof(int));
   int *col_ind = (int *) malloc(2 * nedges * sizeof(int));
@@ -17,9 +18,23 @@ int _girth_conn_helper(int *lil, int nvertices, int nedges, int girth)
   bfs_ws_init(&bfs_ws, nvertices);
   int *depth_ws = (int *) malloc(nvertices * sizeof(int));
 
+  // Allocate memory to hold the smallest cycle.
+  int *small_cycle = (int *) malloc(nvertices * sizeof(int));
+
+  // Initialize the mask for the expected small cycle.
+  int *small_cycle_mask = (int *) calloc(nvertices, sizeof(int));
+  int i, v;
+  for (i=0; i<girth; ++i) {
+    v = expected_small_cycle[i];
+    small_cycle_mask[v] = 1;
+  }
+
   // Compute girth with and without the connectivity assumption.
-  int computed_girth_conn = get_girth_conn(row_ptr, col_ind, nvertices,
-      &bfs_ws, depth_ws);
+  int computed_girth_conn = -1;
+  int girth_witness = -1;
+  get_girth_and_vertex_conn(row_ptr, col_ind, nvertices,
+      &bfs_ws, depth_ws,
+      &computed_girth_conn, &girth_witness);
   int computed_girth = get_girth(row_ptr, col_ind, nvertices,
       &bfs_ws, depth_ws);
 
@@ -44,8 +59,57 @@ int _girth_conn_helper(int *lil, int nvertices, int nedges, int girth)
     failflag = 1;
   }
 
+  // Extract the smallest cycle using the witness vertex
+  // of the girth calculation.
+  int small_cycle_length = -1;
+  if (girth_witness >= 0) {
+    get_smallest_cycle_ub(
+        row_ptr, col_ind, nvertices, girth_witness,
+        &bfs_ws, depth_ws,
+        small_cycle, &small_cycle_length);
+  }
+
+  // Check the extraction of the small cycle.
+  if (small_cycle_length != girth) {
+    printf("failed to extract a cycle with the correct girth\n");
+    printf("expected girth: %d\n", girth);
+    printf("computed girth: %d\n", small_cycle_length);
+    printf("\n");
+    failflag = 1;
+  }
+
+  // If the length of the extracted small cycle is correct,
+  // then check that the extracted cycle is correct.
+  if (girth_witness >= 0 && small_cycle_length == girth) {
+    int small_cycle_fail = 0;
+    for (i=0; i<small_cycle_length; ++i) {
+      v = small_cycle[i];
+      if (small_cycle_mask[v] == 0) {
+        small_cycle_fail = 1;
+        failflag = 1;
+      }
+    }
+    if (small_cycle_fail) {
+      printf("incorrect small cycle vertex set\n");
+      printf("expected: ");
+      for (i=0; i<nvertices; ++i) {
+        if (small_cycle_mask[i]) {
+          printf("%d ", i);
+        }
+      }
+      printf("\n");
+      printf("computed: ");
+      for (i=0; i<small_cycle_length; ++i) {
+        v = small_cycle[i];
+        printf("%d ", v);
+      }
+      printf("\n");
+    }
+  }
+
   // Free some memory.
   bfs_ws_destroy(&bfs_ws);
+  free(small_cycle);
   free(depth_ws);
   free(row_ptr);
   free(col_ind);
@@ -86,7 +150,8 @@ int test_small_cycle_1()
   int nvertices = 15;
   int nedges = 16;
   int girth = 10;
-  return _girth_conn_helper(lil, nvertices, nedges, girth);
+  int small_cycle[] = {0, 1, 2, 3, 11, 12, 13, 14, 4, 10};
+  return _girth_conn_helper(lil, nvertices, nedges, girth, small_cycle);
 }
 
 int test_small_cycle_0()
@@ -125,7 +190,8 @@ int test_small_cycle_0()
   int nvertices = 12;
   int nedges = 13;
   int girth = 4;
-  return _girth_conn_helper(lil, nvertices, nedges, girth);
+  int small_cycle[] = {0, 1, 2, 3};
+  return _girth_conn_helper(lil, nvertices, nedges, girth, small_cycle);
 }
 
 
@@ -158,7 +224,8 @@ int t0()
   int nvertices = 13;
   int nedges = 14;
   int girth = 4;
-  return _girth_conn_helper(lil, nvertices, nedges, girth);
+  int small_cycle[] = {7, 8, 9, 10};
+  return _girth_conn_helper(lil, nvertices, nedges, girth, small_cycle);
 }
 
 
