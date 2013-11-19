@@ -64,6 +64,25 @@ void solver_destroy(SOLVER *p)
   free(solver->components);
 }
 
+void solver_swap_components(SOLVER *solver, int ca, int cb)
+{
+  int *tmp = solver->components[ca];
+  solver->components[ca] = solver->components[cb];
+  solver->components[cb] = tmp;
+}
+
+// Swap the component pointer at the given index
+// with the component pointer at the last index.
+// Decrement the number of components.
+// Note that the component does not index into the ccgraph
+// array of connected components, but rather into the solver array
+// of pointers to connected components.
+void solver_remove_component(SOLVER *solver, int component)
+{
+  solver_swap_components(solver, component, solver->ncomponents - 1);
+  solver->ncomponents--;
+}
+
 // Call this before each solving attempt.
 void solver_prepare(SOLVER *solver,
     const int *row_ptr, const int *col_ind,
@@ -96,6 +115,96 @@ void solver_prepare(SOLVER *solver,
     bsg->girth = computed_girth;
     bsg->index = c;
   }
+}
+
+// Return -1 if no special component is found.
+int solver_get_special_component_index(SOLVER *solver) {
+  int c;
+  for (c=0; c<solver->ncomponents; ++c) {
+    if (solver->components[c]->ell > 1) {
+      return c;
+    }
+  }
+  return -1;
+}
+
+// Process the special component if it exists.
+void solver_do_special(SOLVER *solver,
+    const int *row_ptr, const int *col_ind,
+    CCGRAPH *ccgraph
+    )
+{
+  // Get the special component index.
+  // If none was found, then return.
+  int special_idx = solver_get_special_component_index(solver);
+  if (special_idx < 0) {
+    return;
+  }
+
+  // If the number of vertices in the special component is at most k,
+  // then add the special component into the solution
+  // and remove it from the list of available components.
+  
+  // Add the vertices of the special component into the solution array.
+  int v_local, v_global;
+  BSG_COMPONENT *bsg = solver->components[special_idx];
+  for (v_local=0; v_local<bsg->nvertices; ++v_local) {
+    v_global = ccgraph_local_to_global(ccgraph, bsg->index, v_local);
+    solver->solution[solver->nsolution++] = v_global;
+  }
+
+  // Add the number of edges to the score.
+  solver->score += bsg->nedges;
+
+  // Swap the special component with the component at the back
+  // of the component array, and decrement the number of components.
+  solver_remove_component(special_idx);
+}
+
+// Helper function for qsort_component_decreasing().
+// If the return value is negative
+// then the first element goes before the second element.
+int _cmp_components(const void *a, const void *b)
+{
+  BSG_COMPONENT *pa = *(BSG_COMPONENT **) a;
+  BSG_COMPONENT *pb = *(BSG_COMPONENT **) b;
+
+  // If one of the components has a cycle
+  // but the other does not, then the one with the cycle goes in front.
+  // If both components have a cycle then order does not matter.
+  // If neither component has a cycle then we defer to another criterion.
+  int pa_has_cycle = (pa->girth > -1);
+  int pb_has_cycle = (pb->girth > -1);
+  if (pa_has_cycle && !pb_has_cycle) {
+    return -1;
+  } else if (!pa_has_cycle && pb_has_cycle) {
+    return 1;
+  } else if (pa_has_cycle && pb_has_cycle) {
+    return 0;
+  }
+
+  // If neither component has a cycle,
+  // then sort by decreasing number of vertices.
+  return pb->nvertices - pa->nvertices;
+}
+
+// Sort an array of component pointers in decreasing order.
+int _qsort_components(BSG_COMPONENT **components, int n)
+{
+  qsort(components, n, sizeof(BSG_COMPONENT *), _cmp_components);
+  return 0;
+}
+
+// Sort all of the remaining components.
+// This is not efficient, because it could be broken into three steps.
+// The cycle-containing components could be pushed to the front,
+// the isolated vertices could be pushed to the back,
+// and the remaining tree-like shapes in the middle could be sorted
+// by decreasing length.
+// But instead, I will write my code inefficiently
+// and just sort the whole thing.
+void solver_sort_components(SOLVER *solver)
+{
 }
 
 
@@ -198,147 +307,5 @@ int _move_smallest_cycle_to_front(
   }
 
   return girth;
-}
-
-
-// Deal with the special component if it exists.
-//
-// When building the solution from the connected component vertices,
-// track the following quantities:
-//   int k : the number of vertices remaining to be added
-//   int *solution : the array of vertices that have already been added
-//   int nsolution : the number of vertices added to the solution so far
-//   int score : the number of edges in the subgraph induced by the solution
-//   BSG_COMPONENT *component_data : an array of connected components
-//   BSG_COMPONENT **components : an array of pointers into a components array
-//   int ncomponents : the number of remaining connected components
-//
-// Some preallocated workspaces are required.
-//
-void _remove_special_component()
-{
-}
-
-// Get the set of vertices defining the densest induced k-subgraph.
-//
-// Inputs:
-// A graph in csr format.
-// A decomposition of the graph into connected components.
-// An argument k defining the number of vertices to be selected.
-// Another input is a workspace for bsg components;
-// this is just a BSG_COMPONENT array at least as long as the
-// number of components (which is bounded above by the number of vertices).
-//
-// Input workspaces:
-// va_trace, vb_trace, bfs_ws, depth_ws
-//
-// Outputs:
-// The first k entries of the selection output array selection_out
-// give the selected vertices.
-// Return the number of edges in the induced subgraph.
-//
-int bsg_get_densest_subgraph(
-    const int *row_ptr, const int *col_ind, int nvertices,
-    CCGRAPH *ccgraph,
-    int k,
-    BSG_COMPONENT *bsg_ws,
-    int *va_trace, int *vb_trace,
-    BFS_WS *bfs_ws, int *depth_ws,
-    int *selection_out
-    )
-{
-  // Initialize the selection to nonsensical values.
-  int v;
-  for (v=0; v<nvertices; ++v) {
-    selection_out[v] = -1;
-  }
-
-  // If the number of requested vertices exceeds the total number of vertices
-  // in the graph then return a negative number.
-  if (k > nvertices) {
-    return -1;
-  }
-
-  // Initialize the number of components and vertices
-  // remaining for consideration.
-  // Initialize the total score.
-  int ncomponents_remaining = ccgraph->ncomponents;
-  int nvertices_remaining = nvertices;
-  int total_score = 0;
-
-  // For each component, move the smallest cycle to the front of the array
-  // and order all vertices so that each new vertex is adjacent
-  // to at least one earlier vertex.
-  // Also set some component attributes.
-  int c;
-  BSG_COMPONENT *bsg;
-  for (c=0; c<ncomponents_remaining; ++c) {
-    int computed_girth = _move_smallest_cycle_to_front(
-        row_ptr, col_ind,
-        ccgraph, c,
-        va_trace, vb_trace,
-        bfs_ws, depth_ws);
-    bsg = bsg_ws + c;
-    bsg->nvertices = ccgraph_get_component_nvertices(ccgraph, c);
-    bsg->nedges = ccgraph_get_component_nedges(ccgraph, c);
-    bsg->ell = bsg->nedges - bsg->nvertices;
-    bsg->girth = computed_girth;
-    bsg->index = c;
-  }
-
-  // Track the score.
-
-  int v_local, v_global;
-  int w_local, w_global;
-
-  // Push isolated vertices to the back
-  // while the number of available remaining vertices is less than k
-  // and the index of the component under consideration is less
-  // than the number of components remaining for consideration.
-  component = 0;
-  while (nvertices_remaining < k && component < ncomponents_remaining)
-  {
-    bsg = bsg_ws + component;
-    if (bsg->nedges == 0) {
-      BSG_COMPONENT tmp = *bsg;
-      *bsg = bsg_ws[ncomponents_remaining-1];
-      bsg_ws[ncomponents_remaining-1] = tmp;
-      nvertices_remaining--;
-      ncomponents_remaining--;
-    } else {
-      component++;
-    }
-  }
-
-  // Look for the special component with more than one more edge than vertex.
-  // If this component exists and contains at most k vertices
-  // then we will add it to the selection.
-  int special_component_index = -1;
-  for (c=0; c<ncomponents; ++c) {
-    bsg = bsg_ws + c;
-    if (bsg->ell > 1) {
-      assert(special_component_index == -1); // at most one is allowed
-      special_component_index = c;
-    }
-  }
-  if (special_component_index >= 0) {
-    bsg = bsg_ws + special_component_index;
-    // If the 
-    if (bsg->nvertices <= k) {
-      for (v_local=0; v_local<bsg->nvertices; ++v_local) {
-        v_global = ccgraph_local_to_global(ccgraph, bsg->index, v_local);
-      }
-    }
-  }
-
-  // Move the special components towards the front.
-  // There should be at most a single special component
-  // with greater than one more edge than vertex.
-  BSG_COMPONENT *special_compos;
-  int nspecial_compos;
-  for (component=0; component<ccgraph->ncomponents; ++component) {
-    if (ell 
-
-
 }
 
