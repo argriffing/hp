@@ -150,6 +150,19 @@ int t3()
   return test(name, low, high, expected, ncomponents, target);
 }
 
+int test_charles_blair_example()
+{
+  // http://www.math.sunysb.edu/~scott/blair/Subset_sum_problems_are.html
+  char name[] = "from notes on cryptography by charles blair";
+  int choices[] = {267, 493, 869, 961, 1000, 1153, 1246, 1598, 1766, 1922};
+  int *low = choices;
+  int *high = choices;
+  int expected[] = {0, 0, 869, 961, 1000, 0, 1246, 0, 1766, 0};
+  int ncomponents = 10;
+  int target = 5842;
+  return test(name, low, high, expected, ncomponents, target);
+}
+
 int main()
 {
   int nfails = 0;
@@ -161,6 +174,7 @@ int main()
   nfails += t1();
   nfails += t2();
   nfails += t3();
+  nfails += test_charles_blair_example();
 
   if (nfails) {
     printf("failed testing: %d tests failed\n", nfails);
