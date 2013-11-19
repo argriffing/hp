@@ -24,16 +24,17 @@
 // The _ws suffixed arrays should be of length nvertices
 // and are for temporary storage.
 int get_girth_ub(
-    const int *row_ptr, const int *col_ind, int nvertices, int r,
+    const int *row_ptr, const int *col_ind, int r,
     BFS_WS *bfs_ws, int *depth_ws
     );
 
 // Get the smallest cycle detected from topo sort rooted at r.
 // The length of this cycle is an upper bound
 // on the smallest cycle in the graph.
-int get_smallest_cycle_ub(
-    const int *row_ptr, const int *col_ind, int nvertices, int r,
+void get_smallest_cycle_ub(
+    const int *row_ptr, const int *col_ind, int r,
     BFS_WS *bfs_ws, int *depth_ws,
+    int *va_trace, int *vb_trace,
     int *cycle_out, int *ncycle_out
     );
 

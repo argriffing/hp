@@ -16,6 +16,7 @@
 #include "connectedcomponents.h"
 #include "subsetsum.h"
 #include "graphgirth.h"
+#include "breadthfirst.h"
 
 // Track properties of the connected components of the bond graph.
 // These do not depend on vertex order.
@@ -37,11 +38,14 @@ typedef struct tagBSG_COMPONENT {
 // and do not change the vertex order.
 int _move_smallest_cycle_to_front(
     const int *row_ptr, const int *col_ind,
-    CCGRAPH *ccgraph, int component)
+    CCGRAPH *ccgraph, int component,
+    BFS_WS *bfs_ws, int *depth_ws
+    )
 {
-  int nedges = ccgraph_get_component_nedges(p, component);
-  int nvertices = ccgraph_get_component_nvertices(p, component);
+  int nedges = ccgraph_get_component_nedges(ccgraph, component);
+  int nvertices = ccgraph_get_component_nvertices(ccgraph, component);
   int ell = nedges - nvertices;
+  int girth = -1;
 
   // If the number of vertices is much greater than the number
   // of edges, then we do not have a connected component.
@@ -52,7 +56,8 @@ int _move_smallest_cycle_to_front(
   // In any case we have no cycles, so do not change the order,
   // and return -1 indicating infinite girth.
   if (ell == -1) {
-    return -1;
+    girth = -1;
+    return girth;
   }
 
   // If the number of vertices is equal to the number of edges
@@ -62,13 +67,28 @@ int _move_smallest_cycle_to_front(
   // so we do not have to reorder any vertices.
   // The girth is the number of vertices in this cycle.
   if (ell == 0) {
-    return nvertices;
+    girth = nvertices;
+    return girth;
   }
 
   // For more interesting connected components,
   // each cycle includes at least one vertex of degree at least three.
   // So we can use a modified topo sort to check each of these vertices
   // to see which one is part of the smallest cycle in the component.
+  int *local_row_ptr = ccgraph_get_component_row_ptr(ccgraph, component);
+  int *local_col_ind = ccgraph_get_component_col_ind(ccgraph, component);
+  get_girth_and_vertex_conn(local_row_ptr, local_col_ind, nvertices,
+      bfs_ws, depth_ws, &girth, &local_witness);
+  int global_witness = ccgraph->local_to_global[local_witness];
+  get_smallest_cycle_ub(
+      row_ptr, col_ind, int nvertices, int r,
+      BFS_WS *bfs_ws, int *depth_ws,
+      int *cycle_out, int *ncycle_out
+      );
+
+  
+  nvertices = bfs_fill(const int *row_ptr, const int *col_ind,
+      int *parent, int *history, int nseeds);
 
   return girth;
 }

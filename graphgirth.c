@@ -5,16 +5,63 @@
 #include "graphgirth.h"
 
 
+void _check_girth(const int *parent, const int *depth, int nvertices)
+{
+  int v;
+  for (v=0; v<nvertices; ++v) {
+    assert(parent[v] == -1);
+    assert(depth[v] == -1);
+  }
+}
+
+void _girth_clear(int *parent, int *depth, int *history, int nvisited)
+{
+  //printf("girth clear\n");
+  int i, v;
+  for (i=0; i<nvisited; ++i) {
+    v = history[i];
+    parent[v] = -1;
+    depth[v] = -1;
+  }
+}
+
 // Get the two nodes furthest away from vertex r
 // in the smallest cycle detected in a topo sort rooted at r.
 // The breadth first search workspace has .parent, .deck, and .next.
-void _girth_ub_helper(
-    const int *row_ptr, const int *col_ind, int nvertices, int r,
-    BFS_WS *bfs_ws, int *depth_ws,
-    int *min_length, int *va_out, int *vb_out
+// The .parent and the depth_ws arrays are assumed to have been
+// initialized to -1 everywhere.
+// These values should not be reset within this function.
+int _girth_ub_helper(
+    const int *row_ptr, const int *col_ind, int r,
+    int *parent_ws, int *depth_ws,
+    int *min_length, int *va_out, int *vb_out,
+    int *history
     )
 {
-  int i, v;
+  //printf("girth ub helper\n");
+
+  int i, j;
+  int v, w;
+  int nvisited = 0;
+
+  assert(r >= 0);
+
+  // No vertices have been visited yet.
+  // A parent of -2 means root.
+  // A parent of -1 means the vertex has not yet been visited.
+  // A parent >= 0 is the parent vertex index.
+  assert(parent_ws[r] == -1);
+  parent_ws[r] = -2;
+
+  // A depth of -1 means the vertex has not yet been visited.
+  // A depth of >= 0 is the distance from the root.
+  assert(depth_ws[r] == -1);
+  depth_ws[r] = 0;
+
+  // Use the visited list to track all vertices whose
+  // depth or parent has been changed from -1 to something else.
+  history[0] = r;
+  nvisited++;
 
   // The min cycle length is unknown,
   // and the nodes at the far end of the cycle are unknown.
@@ -22,45 +69,28 @@ void _girth_ub_helper(
   *va_out = -1;
   *vb_out = -1;
 
-  // No vertices have been visited yet.
-  // A parent of -2 means root.
-  // A parent of -1 means the vertex has not yet been visited.
-  // A parent >= 0 is the parent vertex index.
-  // A depth of -1 means the vertex has not yet been visited.
-  // A depth of >= 0 is the distance from the root.
-  for (v=0; v<nvertices; ++v) {
-    bfs_ws->parent[v] = -1;
-    depth_ws[v] = -1;
-  }
-  bfs_ws->parent[r] = -2;
-  depth_ws[r] = 0;
-
-  // The root vertex is on deck for breadth first search.
-  // The root has depth zero.
-  bfs_ws->deck[0] = r;
-  int ndeck = 1;
+  int ncurr, nnext;
 
   // Stop after the first breadth first search iteration that finds a cycle.
   // Note that we cannot stop immediately after the first cycle is found,
   // because cycles found in the same iteration may differ in length
   // by up to one unit.
-  int depth = 0;
-  while (ndeck && (*min_length < 0))
+  ncurr = 1;
+  while (ncurr && (*min_length < 0))
   {
-    int nnext = 0;
-    int ideck;
-    for (ideck=0; ideck<ndeck; ++ideck) {
-      v = bfs_ws->deck[ideck];
-      for (i=row_ptr[v]; i<row_ptr[v+1]; ++i) {
-        int w = col_ind[i];
-        if (w != bfs_ws->parent[v]) {
+    nnext = 0;
+    for (i=0; i<ncurr; ++i) {
+      v = history[i];
+      for (j=row_ptr[v]; j<row_ptr[v+1]; ++j) {
+        w = col_ind[j];
+        if (w != parent_ws[v]) {
 
           // Look at each vertex one step outside of the current shell.
           // If the neighbor has already been spotted,
           // then check if the cycle length is the smallest known.
           // If the neighbor has not been spotted
           // then set its parent and depth and add it to the shell.
-          if (bfs_ws->parent[w] >= 0) {
+          if (parent_ws[w] >= 0) {
             int cycle_length = depth_ws[v] + depth_ws[w] + 1;
             if (*min_length < 0 || cycle_length < *min_length) {
               //printf("(v, w): (%d, %d)\n", v, w);
@@ -73,57 +103,62 @@ void _girth_ub_helper(
               *vb_out = w;
             }
           } else {
-            bfs_ws->parent[w] = v;
+            parent_ws[w] = v;
             depth_ws[w] = depth_ws[v] + 1;
-            bfs_ws->next[nnext++] = w;
+            history[ncurr + nnext++] = w;
+            nvisited++;
           }
         }
       }
     }
-
-    // Put the next array on deck.
-    int *tmp = bfs_ws->deck;
-    bfs_ws->deck = bfs_ws->next;
-    bfs_ws->next = tmp;
-    ndeck = nnext;
+    history += ncurr;
+    ncurr = nnext;
   }
+  return nvisited;
 }
+
 
 // Get the length of the smallest cycle detected from topo sort rooted at r.
 // This is an upper bound on the girth of the graph.
 // The _ws suffixed arrays should be of length nvertices
 // and are for temporary storage.
+// The .parent and depth_ws arrays are assumed to have been
+// initialized to -1 everywhere.
 int get_girth_ub(
-    const int *row_ptr, const int *col_ind, int nvertices, int r,
+    const int *row_ptr, const int *col_ind, int r,
     BFS_WS *bfs_ws, int *depth_ws
     )
 {
+  //printf("get girth ub\n");
   int min_length, va, vb;
-  _girth_ub_helper(row_ptr, col_ind, nvertices, r,
-      bfs_ws, depth_ws,
-      &min_length, &va, &vb);
+  int nvisited = _girth_ub_helper(row_ptr, col_ind, r,
+      bfs_ws->parent, depth_ws,
+      &min_length, &va, &vb,
+      bfs_ws->deck);
+  _girth_clear(bfs_ws->parent, depth_ws, bfs_ws->deck, nvisited);
   return min_length;
 }
 
 // Get the smallest cycle detected from topo sort rooted at r.
 // The length of this cycle is an upper bound
 // on the smallest cycle in the graph.
-int get_smallest_cycle_ub(
-    const int *row_ptr, const int *col_ind, int nvertices, int r,
+// The .parent and depth_ws arrays are assumed to have been
+// initialized to -1 everywhere.
+void get_smallest_cycle_ub(
+    const int *row_ptr, const int *col_ind, int r,
     BFS_WS *bfs_ws, int *depth_ws,
+    int *va_trace, int *vb_trace,
     int *cycle_out, int *ncycle_out
     )
 {
+  //printf("get smallest cycle ub\n");
   int min_length, va, vb;
-  _girth_ub_helper(row_ptr, col_ind, nvertices, r,
-      bfs_ws, depth_ws, 
-      &min_length, &va, &vb);
+  int nvisited = _girth_ub_helper(row_ptr, col_ind, r,
+      bfs_ws->parent, depth_ws, 
+      &min_length, &va, &vb,
+      bfs_ws->deck);
 
-  // Reuse the deck_ws and next_ws buffers for other purposes.
-  int *va_trace = bfs_ws->deck;
-  int *vb_trace = bfs_ws->next;
-
-  // Use the parent_ws output from the helper function
+  // Use the per-vertex parent output from the helper function
   // to trace both vertices back to the root.
   int i, v;
   int na, nb;
@@ -174,6 +209,8 @@ int get_smallest_cycle_ub(
   for (i=nb-root_length-2; i>=0; --i) {
     cycle_out[(*ncycle_out)++] = vb_trace[i];
   }
+
+  _girth_clear(bfs_ws->parent, depth_ws, bfs_ws->deck, nvisited);
 }
 
 
@@ -195,8 +232,8 @@ void get_girth_and_vertex(
   int min_length;
   int root;
   for (root=0; root<nvertices; ++root) {
-    int min_length = get_girth_ub(row_ptr, col_ind, nvertices, root,
-        bfs_ws, depth_ws);
+    int min_length = get_girth_ub(row_ptr, col_ind, root, bfs_ws, depth_ws);
+    //_check_girth(bfs_ws->parent, depth_ws, nvertices);
     if (*girth_out < 0 || min_length < *girth_out) {
       *girth_out = min_length;
       *vertex_out = root;
@@ -257,8 +294,9 @@ void get_girth_and_vertex_conn(
   for (root=0; root<nvertices; ++root) {
     int root_degree = row_ptr[root+1] - row_ptr[root];
     if (root_degree > 2) {
-      int min_length = get_girth_ub(row_ptr, col_ind, nvertices, root,
+      int min_length = get_girth_ub(row_ptr, col_ind, root,
           bfs_ws, depth_ws);
+      //_check_girth(bfs_ws->parent, depth_ws, nvertices);
       if (*girth_out < 0 || min_length < *girth_out) {
         *girth_out = min_length;
         *vertex_out = root;

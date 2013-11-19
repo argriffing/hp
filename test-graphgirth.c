@@ -8,6 +8,8 @@
 int _girth_conn_helper(int *lil, int nvertices, int nedges,
     int girth, int *expected_small_cycle)
 {
+  int i, v;
+
   // Allocate csr memory and convert to csr format.
   int *row_ptr = (int *) malloc((nvertices + 1) * sizeof(int));
   int *col_ind = (int *) malloc(2 * nedges * sizeof(int));
@@ -18,12 +20,19 @@ int _girth_conn_helper(int *lil, int nvertices, int nedges,
   bfs_ws_init(&bfs_ws, nvertices);
   int *depth_ws = (int *) malloc(nvertices * sizeof(int));
 
+  // Initialize parent and depth to -1 for all vertices.
+  for (v=0; v<nvertices; ++v) {
+    bfs_ws.parent[v] = -1;
+    depth_ws[v] = -1;
+  }
+
   // Allocate memory to hold the smallest cycle.
+  int *va_trace = (int *) malloc(nvertices * sizeof(int));
+  int *vb_trace = (int *) malloc(nvertices * sizeof(int));
   int *small_cycle = (int *) malloc(nvertices * sizeof(int));
 
   // Initialize the mask for the expected small cycle.
   int *small_cycle_mask = (int *) calloc(nvertices, sizeof(int));
-  int i, v;
   for (i=0; i<girth; ++i) {
     v = expected_small_cycle[i];
     small_cycle_mask[v] = 1;
@@ -64,8 +73,9 @@ int _girth_conn_helper(int *lil, int nvertices, int nedges,
   int small_cycle_length = -1;
   if (girth_witness >= 0) {
     get_smallest_cycle_ub(
-        row_ptr, col_ind, nvertices, girth_witness,
+        row_ptr, col_ind, girth_witness,
         &bfs_ws, depth_ws,
+        va_trace, vb_trace,
         small_cycle, &small_cycle_length);
   }
 
@@ -109,7 +119,10 @@ int _girth_conn_helper(int *lil, int nvertices, int nedges,
 
   // Free some memory.
   bfs_ws_destroy(&bfs_ws);
+  free(va_trace);
+  free(vb_trace);
   free(small_cycle);
+  free(small_cycle_mask);
   free(depth_ws);
   free(row_ptr);
   free(col_ind);
