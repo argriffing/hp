@@ -100,15 +100,15 @@ void _ccgraph_compute_component(CCGRAPH *p,
   subgraph->nvertices = bfs_fill(row_ptr, col_ind,
       bfs_ws->parent, subgraph->local_to_global, subgraph->nvertices);
   
+  // Clear the parent vertices.
+  bfs_clear(bfs_ws->parent, subgraph->local_to_global, subgraph->nvertices);
+  
   // Set the labels.
   for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
     v_global = subgraph->local_to_global[v_local];
     assert(component_labels[v_global] == -1);
     component_labels[v_global] = label;
   }
-  
-  // Reset parent vertices.
-  bfs_clear(bfs_ws->parent, subgraph->local_to_global, subgraph->nvertices);
 
   // Define the map from global index to local index.
   for (v_local=0; v_local<subgraph->nvertices; ++v_local) {

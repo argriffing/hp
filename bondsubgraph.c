@@ -13,13 +13,17 @@
 //
 // The bsg_ function name prefix stands for "bond subgraph".
 
+
+#include "assert.h"
+
 #include "connectedcomponents.h"
-#include "subsetsum.h"
+//#include "subsetsum.h"
 #include "graphgirth.h"
 #include "breadthfirst.h"
 
 // Track properties of the connected components of the bond graph.
 // These do not depend on vertex order.
+/*
 typedef struct tagBSG_COMPONENT {
   int nvertices; // number of vertices in the connected component
   int nedges;    // number of edges in the connected component
@@ -27,7 +31,7 @@ typedef struct tagBSG_COMPONENT {
   int girth;     // length of smallest cycle or -1 if no cycle exists
   int index;     // index into graph partition structure
 } BSG_COMPONENT;
-
+*/
 
 // Reorder vertices within a connected component of an undirected graph
 // so that the vertices in the smallest cycle are before the other vertices,
@@ -39,6 +43,7 @@ typedef struct tagBSG_COMPONENT {
 int _move_smallest_cycle_to_front(
     const int *row_ptr, const int *col_ind,
     CCGRAPH *ccgraph, int component,
+    int *va_trace, int *vb_trace,
     BFS_WS *bfs_ws, int *depth_ws
     )
 {
@@ -46,6 +51,7 @@ int _move_smallest_cycle_to_front(
   int nvertices = ccgraph_get_component_nvertices(ccgraph, component);
   int ell = nedges - nvertices;
   int girth = -1;
+  SUBGRAPH *subgraph = ccgraph->subgraph + component;
 
   // If the number of vertices is much greater than the number
   // of edges, then we do not have a connected component.
@@ -77,18 +83,53 @@ int _move_smallest_cycle_to_front(
   // to see which one is part of the smallest cycle in the component.
   int *local_row_ptr = ccgraph_get_component_row_ptr(ccgraph, component);
   int *local_col_ind = ccgraph_get_component_col_ind(ccgraph, component);
+  int local_witness = -1;
   get_girth_and_vertex_conn(local_row_ptr, local_col_ind, nvertices,
       bfs_ws, depth_ws, &girth, &local_witness);
-  int global_witness = ccgraph->local_to_global[local_witness];
-  get_smallest_cycle_ub(
-      row_ptr, col_ind, int nvertices, int r,
-      BFS_WS *bfs_ws, int *depth_ws,
-      int *cycle_out, int *ncycle_out
-      );
+  int global_witness = subgraph->local_to_global[local_witness];
 
-  
-  nvertices = bfs_fill(const int *row_ptr, const int *col_ind,
-      int *parent, int *history, int nseeds);
+  // Put the entries of the smallest cycle into the local to global map.
+  int ncycle = -1;
+  get_smallest_cycle_ub(
+      row_ptr, col_ind, global_witness,
+      bfs_ws, depth_ws,
+      va_trace, vb_trace,
+      subgraph->local_to_global, &ncycle);
+  assert(ncycle == girth);
+
+  // Use depth first search to fill the rest of the connected component.
+  int nfilled = bfs_fill(row_ptr, col_ind,
+      bfs_ws->parent, subgraph->local_to_global, ncycle);
+  assert(nfilled == nvertices);
+  bfs_clear(bfs_ws->parent, subgraph->local_to_global, nfilled);
+
+  int i;
+  int v_local, v_global;
+  int w_local, w_global;
+
+  // Translate this global vertex ordering back into local coordinates.
+  for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
+    v_global = subgraph->local_to_global[v_local];
+    ccgraph->global_to_local[v_global] = v_local;
+  }
+
+  // Update the subgraph csr.
+  int nedges_updated = local_row_ptr[0];
+  for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
+
+    // Get the global index of the vertex.
+    v_global = subgraph->local_to_global[v_local];
+
+    // For each edge, add the local sink vertex to the compo col ind array.
+    for (i=row_ptr[v_global]; i<row_ptr[v_global+1]; ++i) {
+      w_global = col_ind[i];
+      w_local = ccgraph->global_to_local[w_global];
+      ccgraph->compo_col_ind[nedges_updated++] = w_local;
+    }
+
+    // Add to the compo row ptr list.
+    local_row_ptr[v_local + 1] = nedges_updated;
+  }
 
   return girth;
 }
@@ -110,6 +151,7 @@ int _move_smallest_cycle_to_front(
 // The number of edges in the induced subgraph will be written
 // to the subgraph_edge_count argument.
 //
+/*
 int bsg_get_densest_subgraph(
     const int *row_ptr, const int *col_ind, int nvertices,
     CCGRAPH *pccgraph,
@@ -123,4 +165,4 @@ int bsg_get_densest_subgraph(
     bsg_ws;
   }
 }
-
+*/
