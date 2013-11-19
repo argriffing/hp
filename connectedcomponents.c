@@ -62,48 +62,6 @@ void ccgraph_destroy(CCGRAPH *p)
 }
 
 
-// This function is not specific to ccgraph.
-// The root vertices should be in the nvertices_out array,
-// and this array should be pre-loaded with *nvertices_out seeds.
-void compute_component_from_roots(
-    const int *row_ptr, const int *col_ind,
-    BFS_WS *bfs_ws,
-    int label, int *component_labels,
-    int *vertices_out, int *nvertices_out
-    )
-{
-  // Use the generic breadth first iteration.
-  *nvertices_out = bfs_fill(row_ptr, col_ind,
-      bfs_ws->parent, vertices_out, *nvertices_out);
-  
-  // Set the labels.
-  int i, v;
-  for (i=0; i<*nvertices_out; ++i) {
-    v = vertices_out[i];
-    assert(component_labels[v] == -1);
-    component_labels[v] = label;
-  }
-}
-
-
-// This function is not specific to ccgraph.
-void compute_component(
-    const int *row_ptr, const int *col_ind,
-    BFS_WS *bfs_ws,
-    int root, int label, int *component_labels,
-    int *vertices_out, int *nvertices_out
-    )
-{
-  vertices_out[0] = root;
-  *nvertices_out = 1;
-  compute_component_from_roots(
-      row_ptr, col_ind,
-      bfs_ws,
-      label, component_labels,
-      vertices_out, nvertices_out);
-}
-
-
 // This is a helper function for flood filling a single component.
 // The function name underscore prefix indicates that this function is not
 // part of the public interface of this module.
@@ -122,6 +80,10 @@ void _ccgraph_compute_component(CCGRAPH *p,
     int root, int *component_labels
     )
 {
+  int i;
+  int v_local, v_global;
+  int w_local, w_global;
+
   // The current label is the number of components in the ccgraph.
   int label = p->ncomponents;
 
@@ -132,21 +94,21 @@ void _ccgraph_compute_component(CCGRAPH *p,
   subgraph->local_to_global = p->local_to_global + p->nvertices;
   subgraph->row_ptr = p->compo_row_ptr + p->nvertices;
 
-  // Initialize the subgraph to have no vertices.
-  subgraph->nvertices = 0;
-
   // Compute the connected component.
-  compute_component(row_ptr, col_ind,
-      bfs_ws,
-      root, label, component_labels,
-      subgraph->local_to_global, &subgraph->nvertices);
+  subgraph->local_to_global[0] = root;
+  subgraph->nvertices = 1;
+  subgraph->nvertices = bfs_fill(row_ptr, col_ind,
+      bfs_ws->parent, subgraph->local_to_global, subgraph->nvertices);
+  
+  // Set the labels.
+  for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
+    v_global = subgraph->local_to_global[v_local];
+    assert(component_labels[v_global] == -1);
+    component_labels[v_global] = label;
+  }
   
   // Reset parent vertices.
   bfs_clear(bfs_ws->parent, subgraph->local_to_global, subgraph->nvertices);
-
-  int i;
-  int v_local, v_global;
-  int w_local, w_global;
 
   // Define the map from global index to local index.
   for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
