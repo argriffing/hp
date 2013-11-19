@@ -59,6 +59,16 @@ void ccgraph_init(CCGRAPH *p, int max_nvertices, int max_nedges);
 void ccgraph_destroy(CCGRAPH *p);
 
 // This function is not specific to ccgraph.
+// The root vertices should be in the vertices_out array,
+// and the number of roots should be *nvertices_out.
+void compute_component_from_roots(
+    const int *row_ptr, const int *col_ind,
+    BFS_WS *bfs_ws,
+    int label, int *component_labels,
+    int *vertices_out, int *nvertices_out
+    );
+
+// This function is not specific to ccgraph.
 void compute_component(
     const int *row_ptr, const int *col_ind,
     BFS_WS *bfs_ws,

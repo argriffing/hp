@@ -63,6 +63,30 @@ void ccgraph_destroy(CCGRAPH *p)
 
 
 // This function is not specific to ccgraph.
+// The root vertices should be in the nvertices_out array,
+// and this array should be pre-loaded with *nvertices_out seeds.
+void compute_component_from_roots(
+    const int *row_ptr, const int *col_ind,
+    BFS_WS *bfs_ws,
+    int label, int *component_labels,
+    int *vertices_out, int *nvertices_out
+    )
+{
+  // Use the generic breadth first iteration.
+  *nvertices_out = bfs_fill(row_ptr, col_ind,
+      bfs_ws->parent, vertices_out, *nvertices_out);
+  
+  // Set the labels.
+  int i, v;
+  for (i=0; i<*nvertices_out; ++i) {
+    v = vertices_out[i];
+    assert(component_labels[v] == -1);
+    component_labels[v] = label;
+  }
+}
+
+
+// This function is not specific to ccgraph.
 void compute_component(
     const int *row_ptr, const int *col_ind,
     BFS_WS *bfs_ws,
@@ -70,56 +94,13 @@ void compute_component(
     int *vertices_out, int *nvertices_out
     )
 {
-  // The component at the root should be unknown (-1).
-  // Set it to the current label.
-  assert(component_labels[root] == -1);
-  component_labels[root] = label;
-
-  // The root parent should be unknown (-1).
-  // Set it to -2 to indicate that it is the root.
-  assert(bfs_ws->parent[root] == -1);
-  bfs_ws->parent[root] = -2;
-
-  // The root vertex is on deck for breadth first search.
-  bfs_ws->deck[0] = root;
-  int ndeck = 1;
-
-  // Do the breadth first search.
-  // During the search update the local/global vertex index maps.
-  // After the search update the local csr graph.
-  while (ndeck)
-  {
-    int nnext = 0;
-    int ideck;
-    for (ideck=0; ideck<ndeck; ++ideck) {
-      int v = bfs_ws->deck[ideck];
-
-      // Update the map from the local to the global vertex index.
-      // Increment the vertex count to include the added vertex.
-      vertices_out[(*nvertices_out)++] = v;
-
-      int i;
-      for (i=row_ptr[v]; i<row_ptr[v+1]; ++i) {
-        int w = col_ind[i];
-        if (w != bfs_ws->parent[v]) {
-          if (bfs_ws->parent[w] >= 0) {
-            assert(component_labels[w] == label);
-          } else {
-            assert(component_labels[w] == -1);
-            component_labels[w] = label;
-            bfs_ws->parent[w] = v;
-            bfs_ws->next[nnext++] = w;
-          }
-        }
-      }
-    }
-
-    // Put the next array on deck.
-    int *tmp = bfs_ws->deck;
-    bfs_ws->deck = bfs_ws->next;
-    bfs_ws->next = tmp;
-    ndeck = nnext;
-  }
+  vertices_out[0] = root;
+  *nvertices_out = 1;
+  compute_component_from_roots(
+      row_ptr, col_ind,
+      bfs_ws,
+      label, component_labels,
+      vertices_out, nvertices_out);
 }
 
 
@@ -159,21 +140,17 @@ void _ccgraph_compute_component(CCGRAPH *p,
       bfs_ws,
       root, label, component_labels,
       subgraph->local_to_global, &subgraph->nvertices);
+  
+  // Reset parent vertices.
+  bfs_clear(bfs_ws->parent, subgraph->local_to_global, subgraph->nvertices);
 
   int i;
   int v_local, v_global;
   int w_local, w_global;
 
-  // Do some simple post-processing for each vertex in the component.
+  // Define the map from global index to local index.
   for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
-
-    // Get the global index of the vertex.
     v_global = subgraph->local_to_global[v_local];
-
-    // Reset the vertex parent.
-    bfs_ws->parent[v_global] = -1;
-
-    // Fill the global to local map.
     p->global_to_local[v_global] = v_local;
   }
 
