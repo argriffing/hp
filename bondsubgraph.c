@@ -161,7 +161,7 @@ void solver_do_special(SOLVER *solver,
   solver_remove_component(special_idx);
 }
 
-// Helper function for qsort_component_decreasing().
+// Helper function for _qsort_components().
 // If the return value is negative
 // then the first element goes before the second element.
 int _cmp_components(const void *a, const void *b)
@@ -216,21 +216,87 @@ void solver_sort_components(SOLVER *solver)
 // to get k edges using k vertices.
 // If k is greater than the sum of the vertices,
 // then the subset sum problem has no solution so we skip it.
+//
+// The s3table object and the low, high, and s3solution arrays are workspaces
+// for solving the subset sum problem.
+//
 void solver_subset_sum(SOLVER *solver,
+    S3TABLE *s3table, int *low, int *high, int *s3solution,
     )
 {
   // Get the number of available components that have cycles.
   // Get the sum of vertices of these components.
-  int ncyclic_components = 0;
-  int ncyclic_vertices = 0;
-  int found_acyclic_component = 0;
+  int cyclic_component_count = 0;
+  int acyclic_component_count = 0;
+  int cyclic_component_vertex_count = 0;
   int c;
   for (c=0; c<ncomponents; ++c)
   {
     if (solver->components[c]->girth > 0) {
-      assert(!found_acyclic_component); // this violates the sort order
+
+      // Components with cycles are not allowed to appear
+      // after components without cycles according to the sorting criterion.
+      assert(!cyclic_component_count);
+
+      // Take note of the cycle-containing component.
+      cyclic_component_count++;
+      cyclic_component_vertex_count += solver->components[c]->nvertices;
+
+    } else {
+      acyclic_component_count++;
     }
   }
+
+  // If the cycle-containing components do not collectively have enough
+  // vertices, then no solution to the subset sum problem is possible.
+  if (solver->k > cyclic_component_vertex_count) {
+    return;
+  }
+
+  // Construct the low array and the high array for the subset sum solver.
+  // These values are related to the girth and the number of vertices
+  // of the components that contain cycles.
+  for (c=0; c<cyclic_component_count; ++c) {
+    low[c] = solver->components[c]->girth;
+    high[c] = solver->components[c]->nvertices;
+  }
+
+  // Attempt to solve the subset sum problem.
+  // Clean up the subset sum solving workspace.
+  int target = solver->k;
+  int ncomponents = cyclic_component_count;
+  s3table_forward(s3table, low, high, ncomponents, target);
+  s3table_backward(s3table, ncomponents, target, s3solution);
+  int success = s3table_attainable(s3table, ncomponents-1, target);
+  s3table_clear(s3table, ncomponents, target);
+
+  // If the attempt failed, then return.
+  if (!success) {
+    return;
+  }
+
+  // If we have successfully found a solution to the subset sum problem,
+  // then update the vertex set for the densest k-subgraph solution.
+  int v_local, v_global;
+  int nvertices_added = 0;
+  for (c=0; c<cyclic_component_count; ++c) {
+    BSG_COMPONENT *bsg = solver->components[c];
+    for (v_local=0; v_local<s3solution[c]; ++v_local) {
+      v_global = ccgraph_local_to_global(ccgraph, bsg->index, v_local);
+      solver->solution[solver->nsolutions++] = v_global;
+      nvertices_added++;
+    }
+  }
+
+  // Check that the number of vertices added is exactly k.
+  // Then set k to zero, showing that we have finished the search.
+  assert(solver->k == nvertices_added);
+  solver->k = 0;
+
+  // Because of the graph constraints and the vertex ordering,
+  // the number of edges added is exactly equal to the number
+  // of vertices added, when the subset sum problem has been solved.
+  solver->score += nvertices_added;
 }
 
 
