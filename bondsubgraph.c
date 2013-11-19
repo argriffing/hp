@@ -145,24 +145,116 @@ int _move_smallest_cycle_to_front(
 // this is just a BSG_COMPONENT array at least as long as the
 // number of components (which is bounded above by the number of vertices).
 //
+// Input workspaces:
+// va_trace, vb_trace, bfs_ws, depth_ws
+//
 // Outputs:
 // The first k entries of the selection output array selection_out
-// give the indices of the selected vertices.
-// The number of edges in the induced subgraph will be written
-// to the subgraph_edge_count argument.
+// give the selected vertices.
+// Return the number of edges in the induced subgraph.
 //
-/*
 int bsg_get_densest_subgraph(
     const int *row_ptr, const int *col_ind, int nvertices,
-    CCGRAPH *pccgraph,
+    CCGRAPH *ccgraph,
     int k,
-    BSG_COMPONENT *bsg_ws, // bond graph component workspace
-    int *selection_out, int *subgraph_edge_count
+    BSG_COMPONENT *bsg_ws,
+    int *va_trace, int *vb_trace,
+    BFS_WS *bfs_ws, int *depth_ws,
+    int *selection_out
     )
 {
-  int i;
-  for (i=0; i<pccgraph->ncomponents; ++i) {
-    bsg_ws;
+  // Initialize the selection to nonsensical values.
+  int v;
+  for (v=0; v<nvertices; ++v) {
+    selection_out[v] = -1;
   }
+
+  // If the number of requested vertices exceeds the total number of vertices
+  // in the graph then return a negative number.
+  if (k > nvertices) {
+    return -1;
+  }
+
+  // Initialize the number of components and vertices
+  // remaining for consideration.
+  // Initialize the total score.
+  int ncomponents_remaining = ccgraph->ncomponents;
+  int nvertices_remaining = nvertices;
+  int total_score = 0;
+
+  // For each component, move the smallest cycle to the front of the array
+  // and order all vertices so that each new vertex is adjacent
+  // to at least one earlier vertex.
+  // Also set some component attributes.
+  int c;
+  BSG_COMPONENT *bsg;
+  for (c=0; c<ncomponents_remaining; ++c) {
+    int computed_girth = _move_smallest_cycle_to_front(
+        row_ptr, col_ind,
+        ccgraph, c,
+        va_trace, vb_trace,
+        bfs_ws, depth_ws);
+    bsg = bsg_ws + c;
+    bsg->nvertices = ccgraph_get_component_nvertices(ccgraph, c);
+    bsg->nedges = ccgraph_get_component_nedges(ccgraph, c);
+    bsg->ell = bsg->nedges - bsg->nvertices;
+    bsg->girth = computed_girth;
+    bsg->index = c;
+  }
+
+  // Track the score.
+
+  int v_local, v_global;
+  int w_local, w_global;
+
+  // Push isolated vertices to the back
+  // while the number of available remaining vertices is less than k
+  // and the index of the component under consideration is less
+  // than the number of components remaining for consideration.
+  component = 0;
+  while (nvertices_remaining < k && component < ncomponents_remaining)
+  {
+    bsg = bsg_ws + component;
+    if (bsg->nedges == 0) {
+      BSG_COMPONENT tmp = *bsg;
+      *bsg = bsg_ws[ncomponents_remaining-1];
+      bsg_ws[ncomponents_remaining-1] = tmp;
+      nvertices_remaining--;
+      ncomponents_remaining--;
+    } else {
+      component++;
+    }
+  }
+
+  // Look for the special component with more than one more edge than vertex.
+  // If this component exists and contains at most k vertices
+  // then we will add it to the selection.
+  int special_component_index = -1;
+  for (c=0; c<ncomponents; ++c) {
+    bsg = bsg_ws + c;
+    if (bsg->ell > 1) {
+      assert(special_component_index == -1); // at most one is allowed
+      special_component_index = c;
+    }
+  }
+  if (special_component_index >= 0) {
+    bsg = bsg_ws + special_component_index;
+    // If the 
+    if (bsg->nvertices <= k) {
+      for (v_local=0; v_local<bsg->nvertices; ++v_local) {
+        v_global = ccgraph_local_to_global(ccgraph, bsg->index, v_local);
+      }
+    }
+  }
+
+  // Move the special components towards the front.
+  // There should be at most a single special component
+  // with greater than one more edge than vertex.
+  BSG_COMPONENT *special_compos;
+  int nspecial_compos;
+  for (component=0; component<ccgraph->ncomponents; ++component) {
+    if (ell 
+
+
 }
-*/
+
