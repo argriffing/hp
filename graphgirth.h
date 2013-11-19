@@ -49,4 +49,18 @@ void get_girth_and_vertex(
     int *girth_out, int *vertex_out
     );
 
+// Get the length of the smallest cycle in the graph.
+// Requires that the graph be connected.
+int get_girth_conn(const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws);
+
+// Get the length of the smallest cycle in the graph,
+// and get a vertex that is in this cycle.
+// Requires that the graph be connected.
+void get_girth_and_vertex_conn(
+    const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws,
+    int *girth_out, int *vertex_out
+    );
+
 #endif

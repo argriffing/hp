@@ -47,12 +47,25 @@ int test_small_cycle_1()
   bfs_ws_init(&bfs_ws, nvertices);
   int *depth_ws = (int *) malloc(nvertices * sizeof(int));
 
-  // Compute girth.
+  // Compute girth with and without the connectivity assumption.
+  int computed_girth_conn = get_girth_conn(row_ptr, col_ind, nvertices,
+      &bfs_ws, depth_ws);
   int computed_girth = get_girth(row_ptr, col_ind, nvertices,
       &bfs_ws, depth_ws);
 
-  // Check the girth.
   int failflag = 0;
+
+  // Check the girth, assuming that the graph is connected.
+  if (computed_girth_conn != girth) {
+    printf("failed to compute the girth correctly,\n");
+    printf("under the assumption of graph connnectivity\n");
+    printf("expected girth: %d\n", girth);
+    printf("computed girth: %d\n", computed_girth_conn);
+    printf("\n");
+    failflag = 1;
+  }
+
+  // Check the girth.
   if (computed_girth != girth) {
     printf("failed to compute the girth correctly\n");
     printf("expected girth: %d\n", girth);
@@ -117,12 +130,25 @@ int test_small_cycle_0()
   bfs_ws_init(&bfs_ws, nvertices);
   int *depth_ws = (int *) malloc(nvertices * sizeof(int));
 
-  // Compute girth.
+  // Compute girth with and without the connectivity assumption.
+  int computed_girth_conn = get_girth_conn(row_ptr, col_ind, nvertices,
+      &bfs_ws, depth_ws);
   int computed_girth = get_girth(row_ptr, col_ind, nvertices,
       &bfs_ws, depth_ws);
 
-  // Check the girth.
   int failflag = 0;
+
+  // Check the girth, assuming that the graph is connected.
+  if (computed_girth_conn != girth) {
+    printf("failed to compute the girth correctly,\n");
+    printf("under the assumption of graph connnectivity\n");
+    printf("expected girth: %d\n", girth);
+    printf("computed girth: %d\n", computed_girth_conn);
+    printf("\n");
+    failflag = 1;
+  }
+
+  // Check the girth.
   if (computed_girth != girth) {
     printf("failed to compute the girth correctly\n");
     printf("expected girth: %d\n", girth);
@@ -186,12 +212,25 @@ int t0()
   int computed_girth_ub = get_girth_ub(row_ptr, col_ind, nvertices, root,
       &bfs_ws, depth_ws);
 
-  // Compute girth.
+  // Compute girth with and without the connectivity assumption.
+  int computed_girth_conn = get_girth_conn(row_ptr, col_ind, nvertices,
+      &bfs_ws, depth_ws);
   int computed_girth = get_girth(row_ptr, col_ind, nvertices,
       &bfs_ws, depth_ws);
 
-  // Check the girth.
   int failflag = 0;
+
+  // Check the girth, assuming that the graph is connected.
+  if (computed_girth_conn != girth) {
+    printf("failed to compute the girth correctly,\n");
+    printf("under the assumption of graph connnectivity\n");
+    printf("expected girth: %d\n", girth);
+    printf("computed girth: %d\n", computed_girth_conn);
+    printf("\n");
+    failflag = 1;
+  }
+
+  // Check the girth.
   if (computed_girth != girth) {
     printf("failed to compute the girth correctly\n");
     printf("expected girth: %d\n", girth);

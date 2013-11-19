@@ -218,3 +218,67 @@ int get_girth(const int *row_ptr, const int *col_ind, int nvertices,
   return girth;
 }
 
+
+// Get the length of the smallest cycle in the graph,
+// and get an associated vertex.
+// This vertex may later be used to extract the minimum length cycle.
+// This function requires that the graph be connected.
+void get_girth_and_vertex_conn(
+    const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws,
+    int *girth_out, int *vertex_out
+    )
+{
+  // If no cycle is found, these values will not change.
+  *girth_out = -1;
+  *vertex_out = -1;
+
+  // Get the number of edges in this graph.
+  int nedges = row_ptr[nvertices] - row_ptr[0];
+
+  // If there are not enough edges then the connected graph cannot have a cycle.
+  if (nedges < nvertices) {
+    return;
+  }
+
+  // If there are exactly enough edges then the graph is a pure cycle,
+  // so any vertex will work.
+  if (nedges == nvertices) {
+    *girth_out = nvertices;
+    *vertex_out = 0;
+    return;
+  }
+
+  // Otherwise all cycles of the connected graph
+  // will include a vertex of degree greater than two.
+  // Look for the minimum such cycle.
+  int min_length;
+  int root;
+  for (root=0; root<nvertices; ++root) {
+    int root_degree = row_ptr[root+1] - row_ptr[root];
+    if (root_degree > 2) {
+      int min_length = get_girth_ub(row_ptr, col_ind, nvertices, root,
+          bfs_ws, depth_ws);
+      if (*girth_out < 0 || min_length < *girth_out) {
+        *girth_out = min_length;
+        *vertex_out = root;
+      }
+    }
+  }
+}
+
+
+// Get the length of the smallest cycle in the graph.
+// This function requires that the graph be connected.
+int get_girth_conn(const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws
+    )
+{
+  int girth;
+  int vertex;
+  get_girth_and_vertex_conn(row_ptr, col_ind, nvertices,
+      bfs_ws, depth_ws,
+      &girth, &vertex);
+  return girth;
+}
+
