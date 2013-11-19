@@ -15,23 +15,89 @@
 
 
 #include "assert.h"
+#include "stdlib.h"
 
 #include "connectedcomponents.h"
-//#include "subsetsum.h"
+#include "subsetsum.h"
 #include "graphgirth.h"
 #include "breadthfirst.h"
 
 // Track properties of the connected components of the bond graph.
 // These do not depend on vertex order.
-/*
 typedef struct tagBSG_COMPONENT {
   int nvertices; // number of vertices in the connected component
   int nedges;    // number of edges in the connected component
   int ell;       // nedges - nvertices
   int girth;     // length of smallest cycle or -1 if no cycle exists
-  int index;     // index into graph partition structure
+  int component; // index into graph partition structure
 } BSG_COMPONENT;
-*/
+
+typedef struct tagSOLVER {
+  int k;                      // number of vertices remaining to be added
+  int *solution;              // array of added vertices
+  int nsolution;              // number of added vertices
+  int score;                  // number of added edges
+  BSG_COMPONENT *data;        // preallocated array of bsg components
+  BSG_COMPONENT **components; // array of pointers into the preallocated array
+  int ncomponents;            // number of remaining components
+} SOLVER;
+
+// This is only for allocating memory.
+void solver_init(SOLVER *solver, int max_nvertices, int max_ncomponents)
+{
+  solver->k = -1;
+  solver->nsolution = -1;
+  solver->score = -1;
+  solver->ncomponents = -1;
+  solver->solution = (int *) malloc(max_nvertices * sizeof(int));
+  solver->data = (BSG_COMPONENT *) malloc(
+      max_ncomponents * sizeof(BSG_COMPONENT));
+  solver->components = (BSG_COMPONENT **) malloc(
+      max_ncomponents * sizeof(BSG_COMPONENT **));
+}
+
+// This is only for freeing memory.
+void solver_destroy(SOLVER *p)
+{
+  free(solver->solution);
+  free(solver->data);
+  free(solver->components);
+}
+
+// Call this before each solving attempt.
+void solver_prepare(SOLVER *solver,
+    const int *row_ptr, const int *col_ind,
+    CCGRAPH *ccgraph, int k,
+    int *va_trace, int *vb_trace,
+    BFS_WS *bfs_ws, int *depth_ws
+    )
+{
+  solver->k = k;
+  solver->nsolution = 0;
+  solver->score = 0;
+  solver->ncomponents = ccgraph->ncomponents;
+
+  // For each component, move the smallest cycle to the front of the array
+  // and order all vertices so that each new vertex is adjacent
+  // to at least one earlier vertex.
+  // Also set some component attributes.
+  int c;
+  BSG_COMPONENT *bsg;
+  for (c=0; c<ncomponents_remaining; ++c) {
+    int computed_girth = _move_smallest_cycle_to_front(
+        row_ptr, col_ind,
+        ccgraph, c,
+        va_trace, vb_trace,
+        bfs_ws, depth_ws);
+    bsg = solver->components[c];
+    bsg->nvertices = ccgraph_get_component_nvertices(ccgraph, c);
+    bsg->nedges = ccgraph_get_component_nedges(ccgraph, c);
+    bsg->ell = bsg->nedges - bsg->nvertices;
+    bsg->girth = computed_girth;
+    bsg->index = c;
+  }
+}
+
 
 // Reorder vertices within a connected component of an undirected graph
 // so that the vertices in the smallest cycle are before the other vertices,
@@ -97,7 +163,7 @@ int _move_smallest_cycle_to_front(
       subgraph->local_to_global, &ncycle);
   assert(ncycle == girth);
 
-  // Use depth first search to fill the rest of the connected component.
+  // Use breadth first search to fill the rest of the connected component.
   int nfilled = bfs_fill(row_ptr, col_ind,
       bfs_ws->parent, subgraph->local_to_global, ncycle);
   assert(nfilled == nvertices);
@@ -134,6 +200,24 @@ int _move_smallest_cycle_to_front(
   return girth;
 }
 
+
+// Deal with the special component if it exists.
+//
+// When building the solution from the connected component vertices,
+// track the following quantities:
+//   int k : the number of vertices remaining to be added
+//   int *solution : the array of vertices that have already been added
+//   int nsolution : the number of vertices added to the solution so far
+//   int score : the number of edges in the subgraph induced by the solution
+//   BSG_COMPONENT *component_data : an array of connected components
+//   BSG_COMPONENT **components : an array of pointers into a components array
+//   int ncomponents : the number of remaining connected components
+//
+// Some preallocated workspaces are required.
+//
+void _remove_special_component()
+{
+}
 
 // Get the set of vertices defining the densest induced k-subgraph.
 //
