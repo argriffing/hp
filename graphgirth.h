@@ -41,4 +41,12 @@ int get_smallest_cycle_ub(
 int get_girth(const int *row_ptr, const int *col_ind, int nvertices,
     BFS_WS *bfs_ws, int *depth_ws);
 
+// Get the length of the smallest cycle in the graph,
+// and get a vertex that is in this cycle.
+void get_girth_and_vertex(
+    const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws,
+    int *girth_out, int *vertex_out
+    );
+
 #endif

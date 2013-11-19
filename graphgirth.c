@@ -177,43 +177,44 @@ int get_smallest_cycle_ub(
 }
 
 
-// Get the length of the smallest cycle in the graph.
-int get_girth(const int *row_ptr, const int *col_ind, int nvertices,
-    BFS_WS *bfs_ws, int *depth_ws
+// Get the length of the smallest cycle in the graph,
+// and get an associated vertex.
+// This vertex may later be used to extract the minimum length cycle.
+void get_girth_and_vertex(
+    const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws,
+    int *girth_out, int *vertex_out
     )
 {
+  // If no cycle is found, these values will not change.
+  *girth_out = -1;
+  *vertex_out = -1;
+
   // Take the minimum over the minimum cycles observed
   // over all topo sorts over all roots.
-  int girth = -1;
   int min_length;
   int root;
   for (root=0; root<nvertices; ++root) {
     int min_length = get_girth_ub(row_ptr, col_ind, nvertices, root,
         bfs_ws, depth_ws);
-    if (girth < 0 || min_length < girth) {
-      girth = min_length;
+    if (*girth_out < 0 || min_length < *girth_out) {
+      *girth_out = min_length;
+      *vertex_out = root;
     }
   }
+}
+
+
+// Get the length of the smallest cycle in the graph.
+int get_girth(const int *row_ptr, const int *col_ind, int nvertices,
+    BFS_WS *bfs_ws, int *depth_ws
+    )
+{
+  int girth;
+  int vertex;
+  get_girth_and_vertex(row_ptr, col_ind, nvertices,
+      bfs_ws, depth_ws,
+      &girth, &vertex);
   return girth;
-}
-
-// Get the length of the smallest cycle and a vertex on the cycle.
-int get_girth_and_vertex(
-    const int *row_ptr, const int *col_ind, int nvertices
-    )
-{
-  assert(0);
-  return 0;
-}
-
-// Get the length of the smallest cycle and a vertex on the cycle.
-// This function is restricted to connected graphs.
-// It treats degree-two vertices more efficiently.
-int get_girth_and_vertex_conn(
-    const int *row_ptr, const int *col_ind, int nvertices
-    )
-{
-  assert(0);
-  return 0;
 }
 
