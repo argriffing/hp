@@ -111,7 +111,7 @@ void solver_prepare(SOLVER *solver,
 int solver_get_special_component_index(SOLVER *solver) {
   int c;
   for (c=0; c<solver->ncomponents; ++c) {
-    if (solver->components[c]->ell > 1) {
+    if (solver->components[c]->ell > 0) {
       return c;
     }
   }
@@ -130,6 +130,7 @@ void solver_do_special(SOLVER *solver,
   if (special_idx < 0) {
     return;
   }
+  printf("found special component\n");
 
   // If the number of vertices in the special component is at most k,
   // then add the special component into the solution
@@ -141,6 +142,7 @@ void solver_do_special(SOLVER *solver,
   for (v_local=0; v_local<bsg->nvertices; ++v_local) {
     v_global = ccgraph_local_to_global(ccgraph, bsg->component, v_local);
     solver->solution[solver->nsolution++] = v_global;
+    solver->k--;
   }
 
   // Add the number of edges to the score.
@@ -194,6 +196,7 @@ void _qsort_components(BSG_COMPONENT **components, int n)
 // and just sort the whole thing.
 void solver_sort_components(SOLVER *solver)
 {
+  printf("sorting %d components\n", solver->ncomponents);
   _qsort_components(solver->components, solver->ncomponents);
 }
 
@@ -242,6 +245,10 @@ void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
   if (solver->k > cyclic_component_vertex_count) {
     return;
   }
+
+  printf("attempting to solve subset sum\n");
+  printf("with %d remaining cycle-containing components\n",
+      cyclic_component_count);
 
   // Construct the low array and the high array for the subset sum solver.
   // These values are related to the girth and the number of vertices

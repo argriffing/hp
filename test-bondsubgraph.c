@@ -298,12 +298,102 @@ int test_three_cycles()
   return _solver_helper(lil, nvertices, nedges, k, expected_solution);
 }
 
+
+int test_menagerie()
+{
+  //
+  //     20 -- 22   19 -- 23 -- 21
+  //                       |
+  //                      17
+  //     0 --- 1
+  //      \   /
+  //       \ /       13 -- 14 -- 15     9
+  //        2               |     |     |
+  //                       16 -- 12 -- 10 -- 11
+  // 
+  //  6 -- 7 -- 8
+  //  |    |    |       18
+  //  3 -- 4 -- 5
+  //
+  //
+  int lil[] = {
+    3, 4,
+    4, 5,
+    6, 7,
+    7, 8,
+    6, 3,
+    7, 4,
+    8, 5,
+
+    0, 1,
+    1, 2,
+    2, 0,
+
+    20, 22,
+
+    19, 23,
+    23, 21,
+    23, 17,
+
+    13, 14,
+    14, 15,
+    14, 16,
+    16, 12,
+    15, 12,
+    11, 10,
+    10, 9,
+    10, 12,
+  };
+  int nvertices = 24;
+  int nedges = 22;
+  int k = 21;
+  int expected_solution[] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    13, 14, 15, 16, 17, 19, 21, 23};
+  return _solver_helper(lil, nvertices, nedges, k, expected_solution);
+}
+
+int test_duelling_cycles()
+{
+  // 0 -- 1   3   6 -- 9
+  // |   /   /|   |    |
+  // |  /   / |   7 -- 10
+  // | /   /  |   |    |
+  // |/   /   |   8 -- 11
+  // 2   4 -- 5
+  //
+  int lil[] = {
+    0, 1,
+    1, 2,
+    2, 0,
+
+    3, 4,
+    4, 5,
+    5, 3,
+
+    6, 9,
+    7, 10,
+    8, 11,
+    6, 7,
+    7, 8,
+    9, 10,
+    10, 11,
+  };
+  int nvertices = 12;
+  int nedges = 13;
+  int k = 6;
+  int expected_solution[] = {6, 7, 8, 9, 10, 11};
+  return _solver_helper(lil, nvertices, nedges, k, expected_solution);
+}
+
 int main()
 {
   int nfails = 0;
 
   nfails += test_small_cycle_1();
   nfails += test_three_cycles();
+  nfails += test_menagerie();
+  nfails += test_duelling_cycles();
 
   if (nfails) {
     printf("failed testing: %d tests failed\n", nfails);
