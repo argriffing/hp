@@ -25,9 +25,9 @@
 // Track properties of the connected components of the bond graph.
 // These do not depend on vertex order.
 typedef struct tagBSG_COMPONENT {
-  int nvertices; // number of vertices in the connected component
-  int nedges;    // number of edges in the connected component
-  int ell;       // nedges - nvertices
+  int nvertices;         // number of vertices in the connected component
+  int nedges_undirected; // number of edges in the connected component
+  int ell;       // nedges_undirected - nvertices
   int girth;     // length of smallest cycle or -1 if no cycle exists
   int component; // index into graph partition structure
 } BSG_COMPONENT;

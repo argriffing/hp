@@ -22,3 +22,22 @@ void lil_to_csr(int nvertices, int nedges,
     row_ptr_out[v+1] = nfilled;
   }
 }
+
+void csr_degree_min_max(
+    const int *row_ptr, int nvertices,
+    int *min_degree, int *max_degree)
+{
+  *min_degree = -1;
+  *max_degree = -1;
+  int i, v;
+  for (v=0; v<nvertices; ++v) {
+    int degree = row_ptr[v+1] - row_ptr[v];
+    if (*min_degree < 0 || degree < *min_degree) {
+      *min_degree = degree;
+    }
+    if (*max_degree < 0 || degree > *max_degree) {
+      *max_degree = degree;
+    }
+  }
+}
+

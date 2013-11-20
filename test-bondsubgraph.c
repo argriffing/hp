@@ -100,6 +100,12 @@ int _solver_helper(int *lil, int nvertices, int nedges,
       &bfs_ws, depth_ws,
       &s3table, low, high, s3solution);
 
+  // Print the graph after some re-ordering.
+  // Note that this does not reflect the re-ordering
+  // of components within the solver.
+  printf("connected components after having tried to solve:\n");
+  _print_connected_component_graph(&g);
+
   // Report the best solution.
   printf("computed densest k-subgraph vertex set:\n");
   for (v=0; v<solver.nsolution; ++v) {

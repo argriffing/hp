@@ -16,6 +16,7 @@
 
 #include "assert.h"
 #include "stdlib.h"
+#include "stdio.h"
 
 #include "connectedcomponents.h"
 #include "subsetsum.h"
@@ -23,7 +24,7 @@
 #include "breadthfirst.h"
 #include "bondsubgraph.h"
 
-// This is only for allocating memory.
+// This is only for allocating memory and linking together the structures.
 void solver_init(SOLVER *solver, int max_nvertices, int max_ncomponents)
 {
   solver->k = -1;
@@ -35,6 +36,12 @@ void solver_init(SOLVER *solver, int max_nvertices, int max_ncomponents)
       max_ncomponents * sizeof(BSG_COMPONENT));
   solver->components = (BSG_COMPONENT **) malloc(
       max_ncomponents * sizeof(BSG_COMPONENT **));
+
+  // Link the components into the data array.
+  int c;
+  for (c=0; c<max_nvertices; ++c) {
+    solver->components[c] = solver->data + c;
+  }
 }
 
 // This is only for freeing memory.
@@ -89,10 +96,12 @@ void solver_prepare(SOLVER *solver,
         ccgraph, c,
         va_trace, vb_trace,
         bfs_ws, depth_ws);
+    printf("c: %d  computed girth: %d\n", c, computed_girth);
     bsg = solver->components[c];
     bsg->nvertices = ccgraph_get_component_nvertices(ccgraph, c);
-    bsg->nedges = ccgraph_get_component_nedges(ccgraph, c);
-    bsg->ell = bsg->nedges - bsg->nvertices;
+    bsg->nedges_undirected = ccgraph_get_component_nedges_undirected(
+        ccgraph, c);
+    bsg->ell = bsg->nedges_undirected - bsg->nvertices;
     bsg->girth = computed_girth;
     bsg->component = c;
   }
@@ -135,7 +144,7 @@ void solver_do_special(SOLVER *solver,
   }
 
   // Add the number of edges to the score.
-  solver->score += bsg->nedges;
+  solver->score += bsg->nedges_undirected;
 
   // Swap the special component with the component at the back
   // of the component array, and decrement the number of components.
@@ -217,7 +226,7 @@ void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
 
       // Components with cycles are not allowed to appear
       // after components without cycles according to the sorting criterion.
-      assert(!cyclic_component_count);
+      assert(!acyclic_component_count);
 
       // Take note of the cycle-containing component.
       cyclic_component_count++;
@@ -345,10 +354,15 @@ int _move_smallest_cycle_to_front(
     BFS_WS *bfs_ws, int *depth_ws
     )
 {
-  int nedges = ccgraph_get_component_nedges(ccgraph, component);
+  int nedges_undirected = ccgraph_get_component_nedges_undirected(
+      ccgraph, component);
   int nvertices = ccgraph_get_component_nvertices(ccgraph, component);
-  int ell = nedges - nvertices;
+  int ell = nedges_undirected - nvertices;
   int girth = -1;
+  int min_degree = -1;
+  int max_degree = -1;
+  ccgraph_get_component_degree_min_max(ccgraph, component,
+      &min_degree, &max_degree);
   SUBGRAPH *subgraph = ccgraph->subgraph + component;
 
   // If the number of vertices is much greater than the number
@@ -364,13 +378,12 @@ int _move_smallest_cycle_to_front(
     return girth;
   }
 
-  // If the number of vertices is equal to the number of edges
-  // then we have a pure cycle.
+  // If the min and max degree are both 2 then we have a pure cycle.
   // Because there are no other vertices in this component,
   // this cycle is already at the front of the vertex list,
   // so we do not have to reorder any vertices.
   // The girth is the number of vertices in this cycle.
-  if (ell == 0) {
+  if (min_degree == 2 && max_degree == 2) {
     girth = nvertices;
     return girth;
   }
@@ -382,9 +395,12 @@ int _move_smallest_cycle_to_front(
   int *local_row_ptr = ccgraph_get_component_row_ptr(ccgraph, component);
   int *local_col_ind = ccgraph_get_component_col_ind(ccgraph, component);
   int local_witness = -1;
+  printf("nvertices: %d\n", nvertices);
   get_girth_and_vertex_conn(local_row_ptr, local_col_ind, nvertices,
       bfs_ws, depth_ws, &girth, &local_witness);
-  int global_witness = subgraph->local_to_global[local_witness];
+  printf("local witness: %d\n", local_witness);
+  int global_witness = ccgraph_local_to_global(ccgraph,
+      component, local_witness);
 
   // Put the entries of the smallest cycle into the local to global map.
   int ncycle = -1;
@@ -446,25 +462,30 @@ int solver_toplevel(SOLVER *solver,
 
   // Prepare the solver.
   // This reorders the vertices within the components that contain cycles.
+  printf("preparing solver\n");
   solver_prepare(solver,
       row_ptr, col_ind, ccgraph, k,
       va_trace, vb_trace,
       bfs_ws, depth_ws);
 
   // Deal with the special component if it exists.
+  printf("dealing with special component if found\n");
   solver_do_special(solver, row_ptr, col_ind, ccgraph);
   if (!solver->k) return;
 
   // Components with cycles have priority;
   // secondarily, large components are preferred.
+  printf("sorting components\n");
   solver_sort_components(solver);
 
   // Attempt to solve the subset sum problem, if appropriate.
+  printf("solving subset sum if applicable\n");
   solver_subset_sum(solver, ccgraph, s3table, low, high, s3solution);
   if (!solver->k) return;
 
   // Add components according to their order within the array,
   // and add vertices according to their order with their component.
+  printf("using greedy solver\n");
   solver_greedy(solver, ccgraph);
   assert(!solver->k);
 }

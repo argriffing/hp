@@ -4,6 +4,7 @@
 
 #include "connectedcomponents.h"
 #include "breadthfirst.h"
+#include "sparsetools.h"
 
 
 void _ccgraph_check_component(CCGRAPH *p, int component) {
@@ -11,9 +12,27 @@ void _ccgraph_check_component(CCGRAPH *p, int component) {
   assert(component < p->ncomponents);
 }
 
+void ccgraph_get_component_degree_min_max(CCGRAPH *p, int component,
+    int *min_degree, int *max_degree)
+{
+  _ccgraph_check_component(p, component);
+  int nvertices = p->subgraph[component].nvertices;
+  int *row_ptr = p->subgraph[component].row_ptr;
+  csr_degree_min_max(row_ptr, nvertices, min_degree, max_degree);
+}
+
 int ccgraph_get_component_nvertices(CCGRAPH *p, int component) {
   _ccgraph_check_component(p, component);
   return p->subgraph[component].nvertices;
+}
+
+int ccgraph_get_component_nedges_undirected(CCGRAPH *p, int component) {
+  _ccgraph_check_component(p, component);
+  int nvertices = p->subgraph[component].nvertices;
+  int *row_ptr = p->subgraph[component].row_ptr;
+  int nedges_directed = row_ptr[nvertices] - row_ptr[0];
+  assert(nedges_directed % 2 == 0);
+  return nedges_directed / 2;
 }
 
 int ccgraph_get_component_nedges(CCGRAPH *p, int component) {

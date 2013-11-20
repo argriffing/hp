@@ -41,7 +41,12 @@ typedef struct tagCCGRAPH {
 
 int ccgraph_get_component_nvertices(CCGRAPH *p, int component);
 
+void ccgraph_get_component_degree_min_max(CCGRAPH *p, int component,
+    int *min_degree, int *max_degree);
+
 int ccgraph_get_component_nedges(CCGRAPH *p, int component);
+
+int ccgraph_get_component_nedges_undirected(CCGRAPH *p, int component);
 
 int *ccgraph_get_component_row_ptr(CCGRAPH *p, int component);
 

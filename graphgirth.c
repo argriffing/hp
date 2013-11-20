@@ -3,6 +3,7 @@
 
 #include "breadthfirst.h"
 #include "graphgirth.h"
+#include "sparsetools.h"
 
 
 void _check_girth(const int *parent, const int *depth, int nvertices)
@@ -270,17 +271,27 @@ void get_girth_and_vertex_conn(
   *girth_out = -1;
   *vertex_out = -1;
 
-  // Get the number of edges in this graph.
-  int nedges = row_ptr[nvertices] - row_ptr[0];
+  // Get the number of directed edges in this graph.
+  int nedges_directed = row_ptr[nvertices] - row_ptr[0];
+  assert(nedges_directed % 2 == 0);
+  int nedges_undirected = nedges_directed / 2;
+
+  // Get the min and max degree.
+  int min_degree = -1;
+  int max_degree = -1;
+  csr_degree_min_max(row_ptr, nvertices, &min_degree, &max_degree);
+  printf("min degree: %d  max degree: %d\n", min_degree, max_degree);
 
   // If there are not enough edges then the connected graph cannot have a cycle.
-  if (nedges < nvertices) {
+  if (nedges_undirected < nvertices) {
+    printf("undirected edges: %d  nvertices: %d\n",
+        nedges_undirected, nvertices);
     return;
   }
 
-  // If there are exactly enough edges then the graph is a pure cycle,
+  // If the min and max degree are both 2 then the graph is a pure cycle,
   // so any vertex will work.
-  if (nedges == nvertices) {
+  if (min_degree == 2 && max_degree == 2) {
     *girth_out = nvertices;
     *vertex_out = 0;
     return;
@@ -303,6 +314,9 @@ void get_girth_and_vertex_conn(
       }
     }
   }
+  
+  // If no vertex has been found then something is wrong.
+  assert(*vertex_out > -1);
 }
 
 
