@@ -47,13 +47,29 @@ int solve_potential_bond_graph(
   ccgraph_init(&g, max_nvertices, max_nedges_directed);
   ccgraph_compute(&g, row_ptr, col_ind, nvertices, &bfs_ws, component_labels);
 
+  // Get the number of connected components that have cycles.
+  // The purpose is to limit the size of the dynamic programming table
+  // that is preallocated for solving the subset sum problem.
+  int cyclic_component_count = 0;
+  int c;
+  for (c=0; c<g.ncomponents; ++c)
+  {
+    int component_nedges_undirected = ccgraph_get_component_nedges_undirected(
+        &g, c);
+    int component_nvertices = ccgraph_get_component_nvertices(
+        &g, c);
+    if (component_nedges_undirected >= component_nvertices) {
+      cyclic_component_count++;
+    }
+  }
+
   // Initialize the subset sum solver workspaces.
   int *high = (int *) malloc(max_target * sizeof(int));
   int *low = (int *) malloc(max_target * sizeof(int));
-  int *s3solution = (int *) malloc(max_ncomponents * sizeof(int));
+  int *s3solution = (int *) malloc(cyclic_component_count * sizeof(int));
   S3TABLE s3table;
-  s3table_init(&s3table, max_ncomponents, max_target);
-  s3table_clear(&s3table, max_ncomponents, max_target);
+  s3table_init(&s3table, cyclic_component_count, max_target);
+  s3table_clear(&s3table, cyclic_component_count, max_target);
 
   // Init the densest k-subgraph solver.
   SOLVER solver;
@@ -94,6 +110,106 @@ int solve_potential_bond_graph(
   free(depth_ws);
 
   return failflag;
+}
+
+// TODO: use hashing to construct the potential bond graph in O(N)
+
+// Construct the potential bond graph using an explicit bounding box.
+// Depending on the efficiency of the box,
+// the complexity is between O(N) and O(N^2) time and space.
+int construct_bond_graph_using_box(
+    const int *x, const int *y, int nvertices,
+    int *row_ptr, int *col_ind)
+{
+  assert(nvertices);
+  int i;
+
+  // Find the bounds of the box.
+  int xmin = x[0];
+  int xmax = x[0];
+  int ymin = y[0];
+  int ymax = y[0];
+  for (i=0; i<nvertices; ++i) {
+    if (x[i] > xmax) xmax = x[i];
+    if (x[i] < xmin) xmin = x[i];
+    if (y[i] > ymax) ymax = y[i];
+    if (y[i] < ymin) ymin = y[i];
+  }
+
+  // Allocate a bordered table.
+  int width = (xmax - xmin + 1) + 2;
+  int height = (ymax - ymin + 1) + 2;
+  int area = width * height;
+  int xbase = xmin - 1;
+  int ybase = ymin - 1;
+  int *table = (int *) malloc(area * sizeof(int));
+  if (!table) {
+    printf("Error: memory error allocating bounding box\n");
+    return 1;
+  }
+  memset(table, -1, area * sizeof(int));
+
+  // Fill the table, checking for collisions.
+  int idx;
+  int ncollisions = 0;
+  for (i=0; i<nvertices; ++i) {
+    idx = (y[i] - ybase)*width + (x[i] - xbase);
+    if (table[idx] != -1) {
+      printf("Error: the conformation includes self-intersections\n");
+      free(table);
+      return 1;
+    }
+    table[idx] = i;
+  }
+
+  // Add the potential bond edges.
+  int dx[] = {1, 0, -1, 0};
+  int dy[] = {0, -1, 0, 1};
+  int j;
+  int jdx;
+  row_ptr[0] = 0;
+  for (i=0; i<nvertices; ++i) {
+    row_ptr[i+1] = row_ptr[i];
+    idx = (y[i] - ybase)*width + (x[i] - xbase);
+    for (j=0; j<4; ++j) {
+      jdx = (y[i] + dy[j] - ybase)*width + (x[i] + dx[j] - xbase);
+      if (table[jdx] >= 0 && abs(table[jdx] - table[idx]) > 1) {
+        col_ind[row_ptr[i+1]++] = table[jdx];
+      }
+    }
+  }
+
+  // Free the table.
+  free(table);
+  return 0;
+}
+
+
+// Construct the potential bond graph in O(N^2) time.
+int construct_bond_graph(
+    const int *x, const int *y, int nvertices,
+    int *row_ptr, int *col_ind)
+{
+  int i, j;
+  int ncollisions = 0;
+  row_ptr[0] = 0;
+  for (i=0; i<nvertices; ++i) {
+    row_ptr[i+1] = row_ptr[i];
+    for (j=0; j<nvertices; ++j) {
+      if (i != j && x[i] == x[j] && y[i] == y[j]) {
+        ncollisions++;
+      }
+      if (abs(j-i) > 1) {
+        if (abs(x[j] - x[i]) + abs(y[j] - y[i]) == 1) {
+          col_ind[row_ptr[i+1]++] = j;
+        }
+      }
+    }
+  }
+  if (ncollisions) {
+    printf("Error: the conformation includes self-intersections\n");
+  }
+  return ncollisions;
 }
 
 
@@ -168,7 +284,7 @@ int main(int argc, char *argv[])
   // then this is a problem.
   if (k > nvertices) {
     printf("Error: the requested sequence weight ");
-    printf("is greater than the sequence length");
+    printf("is greater than the sequence length\n");
     free(walk);
     return 1;
   }
@@ -199,32 +315,17 @@ int main(int argc, char *argv[])
   free(walk);
 
   // Initialize the csr graph of potential bonds.
-  row_ptr[0] = 0;
-  int j;
-  int ncollisions = 0;
-  for (i=0; i<nvertices; ++i) {
-    row_ptr[i+1] = row_ptr[i];
-    for (j=0; j<nvertices; ++j) {
-      if (i != j && x[i] == x[j] && y[i] == y[j]) {
-        ncollisions++;
-      }
-      if (abs(j-i) > 1) {
-        if (abs(x[j] - x[i]) + abs(y[j] - y[i]) == 1) {
-          col_ind[row_ptr[i+1]++] = j;
-        }
-      }
-    }
-  }
+  int construction_failure = construct_bond_graph_using_box(
+      x, y, nvertices, row_ptr, col_ind);
 
   // Free the coordinates per vertex.
   free(x);
   free(y);
 
-  if (ncollisions) {
-    printf("Error: the conformation includes self-intersections\n");
+  if (construction_failure) {
     free(row_ptr);
     free(col_ind);
-    return 1;
+    return construction_failure;
   }
 
   // Solve a densest k-subgraph problem on the potential bond graph.
