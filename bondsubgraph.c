@@ -57,7 +57,7 @@ void solver_init(SOLVER *solver, int max_nvertices, int max_ncomponents)
 }
 
 // This is only for freeing memory.
-void solver_destroy(SOLVER *p)
+void solver_destroy(SOLVER *solver)
 {
   free(solver->solution);
   free(solver->data);
@@ -66,7 +66,7 @@ void solver_destroy(SOLVER *p)
 
 void solver_swap_components(SOLVER *solver, int ca, int cb)
 {
-  int *tmp = solver->components[ca];
+  BSG_COMPONENT *tmp = solver->components[ca];
   solver->components[ca] = solver->components[cb];
   solver->components[cb] = tmp;
 }
@@ -102,7 +102,7 @@ void solver_prepare(SOLVER *solver,
   // Also set some component attributes.
   int c;
   BSG_COMPONENT *bsg;
-  for (c=0; c<ncomponents_remaining; ++c) {
+  for (c=0; c<solver->ncomponents; ++c) {
     int computed_girth = _move_smallest_cycle_to_front(
         row_ptr, col_ind,
         ccgraph, c,
@@ -113,7 +113,7 @@ void solver_prepare(SOLVER *solver,
     bsg->nedges = ccgraph_get_component_nedges(ccgraph, c);
     bsg->ell = bsg->nedges - bsg->nvertices;
     bsg->girth = computed_girth;
-    bsg->index = c;
+    bsg->component = c;
   }
 }
 
@@ -149,7 +149,7 @@ void solver_do_special(SOLVER *solver,
   int v_local, v_global;
   BSG_COMPONENT *bsg = solver->components[special_idx];
   for (v_local=0; v_local<bsg->nvertices; ++v_local) {
-    v_global = ccgraph_local_to_global(ccgraph, bsg->index, v_local);
+    v_global = ccgraph_local_to_global(ccgraph, bsg->component, v_local);
     solver->solution[solver->nsolution++] = v_global;
   }
 
@@ -158,7 +158,7 @@ void solver_do_special(SOLVER *solver,
 
   // Swap the special component with the component at the back
   // of the component array, and decrement the number of components.
-  solver_remove_component(special_idx);
+  solver_remove_component(solver, special_idx);
 }
 
 // Helper function for _qsort_components().
@@ -220,8 +220,8 @@ void solver_sort_components(SOLVER *solver)
 // The s3table object and the low, high, and s3solution arrays are workspaces
 // for solving the subset sum problem.
 //
-void solver_subset_sum(SOLVER *solver,
-    S3TABLE *s3table, int *low, int *high, int *s3solution,
+void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
+    S3TABLE *s3table, int *low, int *high, int *s3solution
     )
 {
   // Get the number of available components that have cycles.
@@ -230,7 +230,7 @@ void solver_subset_sum(SOLVER *solver,
   int acyclic_component_count = 0;
   int cyclic_component_vertex_count = 0;
   int c;
-  for (c=0; c<ncomponents; ++c)
+  for (c=0; c<solver->ncomponents; ++c)
   {
     if (solver->components[c]->girth > 0) {
 
@@ -282,8 +282,8 @@ void solver_subset_sum(SOLVER *solver,
   for (c=0; c<cyclic_component_count; ++c) {
     BSG_COMPONENT *bsg = solver->components[c];
     for (v_local=0; v_local<s3solution[c]; ++v_local) {
-      v_global = ccgraph_local_to_global(ccgraph, bsg->index, v_local);
-      solver->solution[solver->nsolutions++] = v_global;
+      v_global = ccgraph_local_to_global(ccgraph, bsg->component, v_local);
+      solver->solution[solver->nsolution++] = v_global;
       nvertices_added++;
     }
   }
@@ -313,8 +313,7 @@ void solver_subset_sum(SOLVER *solver,
 // a whole cycle.
 // We are also penalized one point
 // for each whole and each partial cycle-less component.
-void solve_greedy(SOLVER *solver,
-    )
+void solver_greedy(SOLVER *solver, CCGRAPH *ccgraph)
 {
   int v, v_global;
   int npenalties = 0;
@@ -323,8 +322,8 @@ void solve_greedy(SOLVER *solver,
   for (c=0; c<solver->ncomponents && nvertices_added < solver->k; ++c) {
     BSG_COMPONENT *bsg = solver->components[c];
     for (v=0; v<bsg->nvertices && nvertices_added < solver->k; ++v) {
-      v_global = ccgraph_local_to_global(ccgraph, bsg->index, v);
-      solver->solution[solver->nsolutions++] = v_global;
+      v_global = ccgraph_local_to_global(ccgraph, bsg->component, v);
+      solver->solution[solver->nsolution++] = v_global;
       nvertices_added++;
       
       // We incur a penalty if we include a partial cycle-containing component.
@@ -346,7 +345,7 @@ void solve_greedy(SOLVER *solver,
   assert(nvertices_added == solver->k);
 
   // Add the score, which is k minus the penalties, and set k to zero.
-  solver->score += k - npenalties;
+  solver->score += solver->k - npenalties;
   solver->k = 0;
 }
 
@@ -453,12 +452,12 @@ int _move_smallest_cycle_to_front(
 }
 
 
-// TODO pass enough args to each function
 // The connected component decomposition is assumed to have been performed.
 int solver_toplevel(SOLVER *solver,
     const int *row_ptr, const int *col_ind, CCGRAPH *ccgraph, int k,
     int *va_trace, int *vb_trace,
-    BFS_WS *bfs_ws, int *depth_ws
+    BFS_WS *bfs_ws, int *depth_ws,
+    S3TABLE *s3table, int *low, int *high, int *s3solution
     )
 {
   // Check that enough vertices are available.
@@ -472,7 +471,7 @@ int solver_toplevel(SOLVER *solver,
       bfs_ws, depth_ws);
 
   // Deal with the special component if it exists.
-  solver_do_special(solver);
+  solver_do_special(solver, row_ptr, col_ind, ccgraph);
   if (!solver->k) return;
 
   // Components with cycles have priority;
@@ -480,12 +479,12 @@ int solver_toplevel(SOLVER *solver,
   solver_sort_components(solver);
 
   // Attempt to solve the subset sum problem, if appropriate.
-  solver_subset_sum(solver);
+  solver_subset_sum(solver, ccgraph, s3table, low, high, s3solution);
   if (!solver->k) return;
 
   // Add components according to their order within the array,
   // and add vertices according to their order with their component.
-  solver_greedy(solver);
+  solver_greedy(solver, ccgraph);
   assert(!solver->k);
 }
 
