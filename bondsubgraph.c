@@ -452,3 +452,41 @@ int _move_smallest_cycle_to_front(
   return girth;
 }
 
+
+// TODO pass enough args to each function
+// The connected component decomposition is assumed to have been performed.
+int solver_toplevel(SOLVER *solver,
+    const int *row_ptr, const int *col_ind, CCGRAPH *ccgraph, int k,
+    int *va_trace, int *vb_trace,
+    BFS_WS *bfs_ws, int *depth_ws
+    )
+{
+  // Check that enough vertices are available.
+  assert(solver->k <= ccgraph->nvertices);
+
+  // Prepare the solver.
+  // This reorders the vertices within the components that contain cycles.
+  solver_prepare(solver,
+      row_ptr, col_ind, ccgraph, k,
+      va_trace, vb_trace,
+      bfs_ws, depth_ws);
+
+  // Deal with the special component if it exists.
+  solver_do_special(solver);
+  if (!solver->k) return;
+
+  // Components with cycles have priority;
+  // secondarily, large components are preferred.
+  solver_sort_components(solver);
+
+  // Attempt to solve the subset sum problem, if appropriate.
+  solver_subset_sum(solver);
+  if (!solver->k) return;
+
+  // Add components according to their order within the array,
+  // and add vertices according to their order with their component.
+  solver_greedy(solver);
+  assert(!solver->k);
+}
+
+
