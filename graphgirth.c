@@ -280,12 +280,12 @@ void get_girth_and_vertex_conn(
   int min_degree = -1;
   int max_degree = -1;
   csr_degree_min_max(row_ptr, nvertices, &min_degree, &max_degree);
-  printf("min degree: %d  max degree: %d\n", min_degree, max_degree);
+  //printf("min degree: %d  max degree: %d\n", min_degree, max_degree);
 
   // If there are not enough edges then the connected graph cannot have a cycle.
   if (nedges_undirected < nvertices) {
-    printf("undirected edges: %d  nvertices: %d\n",
-        nedges_undirected, nvertices);
+    //printf("undirected edges: %d  nvertices: %d\n",
+        //nedges_undirected, nvertices);
     return;
   }
 

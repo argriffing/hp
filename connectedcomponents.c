@@ -145,7 +145,6 @@ void _ccgraph_compute_component(CCGRAPH *p,
     for (i=row_ptr[v_global]; i<row_ptr[v_global+1]; ++i) {
       w_global = col_ind[i];
       w_local = p->global_to_local[w_global];
-      printf("number of edges: %d\n", p->nedges);
       p->compo_col_ind[p->nedges++] = w_local;
     }
 

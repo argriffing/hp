@@ -129,6 +129,27 @@ int _solver_helper(int *lil, int nvertices, int nedges,
     failflag = 1;
   }
 
+  // Explicitly count the number of directed edges in the induced subgraph.
+  int j, w;
+  int nedges_subgraph_directed = 0;
+  for (i=0; i<solver.nsolution; ++i) {
+    v = solver.solution[i];
+    for (j=row_ptr[v]; j<row_ptr[v+1]; ++j) {
+      w = col_ind[j];
+      if (observed_set[v] && observed_set[w]) {
+        nedges_subgraph_directed += 1;
+      }
+    }
+  }
+  assert(nedges_subgraph_directed % 2 == 0);
+  int nedges_subgraph_undirected = nedges_subgraph_directed / 2;
+  if (nedges_subgraph_undirected != solver.score) {
+    printf("failed to reproduce the reported score:\n");
+    printf("reported score: %d\n", solver.score);
+    printf("computed score: %d\n", nedges_subgraph_undirected);
+    failflag = 1;
+  }
+
   // Print the graph after some re-ordering.
   // Note that this does not reflect the re-ordering
   // of components within the solver.

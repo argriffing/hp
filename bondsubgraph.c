@@ -96,7 +96,7 @@ void solver_prepare(SOLVER *solver,
         ccgraph, c,
         va_trace, vb_trace,
         bfs_ws, depth_ws);
-    printf("c: %d  computed girth: %d\n", c, computed_girth);
+    //printf("c: %d  computed girth: %d\n", c, computed_girth);
     bsg = solver->components[c];
     bsg->nvertices = ccgraph_get_component_nvertices(ccgraph, c);
     bsg->nedges_undirected = ccgraph_get_component_nedges_undirected(
@@ -130,7 +130,7 @@ void solver_do_special(SOLVER *solver,
   if (special_idx < 0) {
     return;
   }
-  printf("found special component\n");
+  //printf("found special component\n");
 
   // If the number of vertices in the special component is at most k,
   // then add the special component into the solution
@@ -196,7 +196,7 @@ void _qsort_components(BSG_COMPONENT **components, int n)
 // and just sort the whole thing.
 void solver_sort_components(SOLVER *solver)
 {
-  printf("sorting %d components\n", solver->ncomponents);
+  //printf("sorting %d components\n", solver->ncomponents);
   _qsort_components(solver->components, solver->ncomponents);
 }
 
@@ -246,9 +246,9 @@ void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
     return;
   }
 
-  printf("attempting to solve subset sum\n");
-  printf("with %d remaining cycle-containing components\n",
-      cyclic_component_count);
+  //printf("attempting to solve subset sum\n");
+  //printf("with %d remaining cycle-containing components\n",
+      //cyclic_component_count);
 
   // Construct the low array and the high array for the subset sum solver.
   // These values are related to the girth and the number of vertices
@@ -324,8 +324,10 @@ void solver_greedy(SOLVER *solver, CCGRAPH *ccgraph)
       nvertices_added++;
       
       // We incur a penalty if we include a partial cycle-containing component.
-      if (nvertices_added == solver->k && v < bsg->nvertices - 1) {
-        npenalties++;
+      if (nvertices_added == solver->k) {
+        if (bsg->ell > -1 && v < bsg->nvertices - 1) {
+          npenalties++;
+        }
       }
 
       // We incur a penalty for each cycle-free component regardless
@@ -402,10 +404,10 @@ int _move_smallest_cycle_to_front(
   int *local_row_ptr = ccgraph_get_component_row_ptr(ccgraph, component);
   int *local_col_ind = ccgraph_get_component_col_ind(ccgraph, component);
   int local_witness = -1;
-  printf("nvertices: %d\n", nvertices);
+  //printf("nvertices: %d\n", nvertices);
   get_girth_and_vertex_conn(local_row_ptr, local_col_ind, nvertices,
       bfs_ws, depth_ws, &girth, &local_witness);
-  printf("local witness: %d\n", local_witness);
+  //printf("local witness: %d\n", local_witness);
   int global_witness = ccgraph_local_to_global(ccgraph,
       component, local_witness);
 
@@ -469,30 +471,30 @@ int solver_toplevel(SOLVER *solver,
 
   // Prepare the solver.
   // This reorders the vertices within the components that contain cycles.
-  printf("preparing solver\n");
+  //printf("preparing solver\n");
   solver_prepare(solver,
       row_ptr, col_ind, ccgraph, k,
       va_trace, vb_trace,
       bfs_ws, depth_ws);
 
   // Deal with the special component if it exists.
-  printf("dealing with special component if found\n");
+  //printf("dealing with special component if found\n");
   solver_do_special(solver, row_ptr, col_ind, ccgraph);
   if (!solver->k) return;
 
   // Components with cycles have priority;
   // secondarily, large components are preferred.
-  printf("sorting components\n");
+  //printf("sorting components\n");
   solver_sort_components(solver);
 
   // Attempt to solve the subset sum problem, if appropriate.
-  printf("solving subset sum if applicable\n");
+  //printf("solving subset sum if applicable\n");
   solver_subset_sum(solver, ccgraph, s3table, low, high, s3solution);
   if (!solver->k) return;
 
   // Add components according to their order within the array,
   // and add vertices according to their order with their component.
-  printf("using greedy solver\n");
+  //printf("using greedy solver\n");
   solver_greedy(solver, ccgraph);
   assert(!solver->k);
 }
