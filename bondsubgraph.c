@@ -300,6 +300,57 @@ void solver_subset_sum(SOLVER *solver,
 }
 
 
+// Components are sorted with cycle-containing components appearing first,
+// followed by tree-like components.
+// The components are secondarily sorted according to decreasing
+// number of vertices.
+// Because we have failed the subset sum search by this point,
+// there is no way to add k or more edges by adding k vertices.
+// We are penalized by one point if we include a partial cycle-containing
+// component -- note that we are assuming that we include at most
+// one such component and that because we have failed the subset sum
+// problem, this partial cycle-containing component cannot contain
+// a whole cycle.
+// We are also penalized one point
+// for each whole and each partial cycle-less component.
+void solve_greedy(SOLVER *solver,
+    )
+{
+  int v, v_global;
+  int npenalties = 0;
+  int nvertices_added = 0;
+  int c;
+  for (c=0; c<solver->ncomponents && nvertices_added < solver->k; ++c) {
+    BSG_COMPONENT *bsg = solver->components[c];
+    for (v=0; v<bsg->nvertices && nvertices_added < solver->k; ++v) {
+      v_global = ccgraph_local_to_global(ccgraph, bsg->index, v);
+      solver->solution[solver->nsolutions++] = v_global;
+      nvertices_added++;
+      
+      // We incur a penalty if we include a partial cycle-containing component.
+      if (nvertices_added == solver->k && v < bsg->nvertices - 1) {
+        npenalties++;
+      }
+
+      // We incur a penalty for each cycle-free component regardless
+      // of whether or not the whole component is included.
+      if (v == 0 && bsg->girth < 0) {
+        npenalties++;
+      }
+    }
+  }
+
+  // Assert that we have incurred at least one penalty
+  // and that we have added a number of vertices equal to k.
+  assert(npenalties > 0);
+  assert(nvertices_added == solver->k);
+
+  // Add the score, which is k minus the penalties, and set k to zero.
+  solver->score += k - npenalties;
+  solver->k = 0;
+}
+
+
 // Reorder vertices within a connected component of an undirected graph
 // so that the vertices in the smallest cycle are before the other vertices,
 // and so that each vertex is adjacent to a vertex somewhere
