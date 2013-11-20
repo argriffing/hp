@@ -18,21 +18,29 @@
 
 
 #include "connectedcomponents.h"
-//#include "subsetsum.h"
+#include "subsetsum.h"
 #include "graphgirth.h"
 #include "breadthfirst.h"
 
 // Track properties of the connected components of the bond graph.
 // These do not depend on vertex order.
-/*
 typedef struct tagBSG_COMPONENT {
   int nvertices; // number of vertices in the connected component
   int nedges;    // number of edges in the connected component
   int ell;       // nedges - nvertices
   int girth;     // length of smallest cycle or -1 if no cycle exists
-  int index;     // index into graph partition structure
+  int component; // index into graph partition structure
 } BSG_COMPONENT;
-*/
+
+typedef struct tagSOLVER {
+  int k;                      // number of vertices remaining to be added
+  int *solution;              // array of added vertices
+  int nsolution;              // number of added vertices
+  int score;                  // number of added edges
+  BSG_COMPONENT *data;        // preallocated array of bsg components
+  BSG_COMPONENT **components; // array of pointers into the preallocated array
+  int ncomponents;            // number of remaining components
+} SOLVER;
 
 // Reorder vertices within a connected component of an undirected graph
 // so that the vertices in the smallest cycle are before the other vertices,
@@ -48,38 +56,6 @@ int _move_smallest_cycle_to_front(
     BFS_WS *bfs_ws, int *depth_ws
     );
 
-
-// Get the set of vertices defining the densest induced k-subgraph.
-//
-// Inputs:
-// A graph in csr format.
-// A decomposition of the graph into connected components.
-// An argument k defining the number of vertices to be selected.
-// Another input is a workspace for bsg components;
-// this is just a BSG_COMPONENT array at least as long as the
-// number of components (which is bounded above by the number of vertices).
-//
-// Outputs:
-// The first k entries of the selection output array selection_out
-// give the indices of the selected vertices.
-// The number of edges in the induced subgraph will be written
-// to the subgraph_edge_count argument.
-//
-/*
-int bsg_get_densest_subgraph(
-    const int *row_ptr, const int *col_ind, int nvertices,
-    CCGRAPH *pccgraph,
-    int k,
-    BSG_COMPONENT *bsg_ws, // bond graph component workspace
-    int *selection_out, int *subgraph_edge_count
-    )
-{
-  int i;
-  for (i=0; i<pccgraph->ncomponents; ++i) {
-    bsg_ws;
-  }
-}
-*/
 
 #endif
 

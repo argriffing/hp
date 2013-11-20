@@ -21,26 +21,7 @@
 #include "subsetsum.h"
 #include "graphgirth.h"
 #include "breadthfirst.h"
-
-// Track properties of the connected components of the bond graph.
-// These do not depend on vertex order.
-typedef struct tagBSG_COMPONENT {
-  int nvertices; // number of vertices in the connected component
-  int nedges;    // number of edges in the connected component
-  int ell;       // nedges - nvertices
-  int girth;     // length of smallest cycle or -1 if no cycle exists
-  int component; // index into graph partition structure
-} BSG_COMPONENT;
-
-typedef struct tagSOLVER {
-  int k;                      // number of vertices remaining to be added
-  int *solution;              // array of added vertices
-  int nsolution;              // number of added vertices
-  int score;                  // number of added edges
-  BSG_COMPONENT *data;        // preallocated array of bsg components
-  BSG_COMPONENT **components; // array of pointers into the preallocated array
-  int ncomponents;            // number of remaining components
-} SOLVER;
+#include "bondsubgraph.h"
 
 // This is only for allocating memory.
 void solver_init(SOLVER *solver, int max_nvertices, int max_ncomponents)
