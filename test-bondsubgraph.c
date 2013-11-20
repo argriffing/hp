@@ -1,5 +1,6 @@
 #include "stdio.h"
 #include "stdlib.h"
+#include "assert.h"
 
 #include "sparsetools.h"
 #include "connectedcomponents.h"
@@ -40,6 +41,8 @@ void _print_connected_component_graph(CCGRAPH *p)
 int _solver_helper(int *lil, int nvertices, int nedges,
     int k, int *expected_solution)
 {
+  int failflag = 0;
+
   // Construct the csr representation of the graph.
   int *row_ptr = (int *) malloc((nvertices + 1) * sizeof(int));
   int *col_ind = (int *) malloc(2 * nedges * sizeof(int));
@@ -57,8 +60,7 @@ int _solver_helper(int *lil, int nvertices, int nedges,
   int *va_trace = (int *) malloc(nvertices * sizeof(int));
   int *vb_trace = (int *) malloc(nvertices * sizeof(int));
 
-  // Declare vertex for iteration.
-  int v;
+  int i, v;
 
   // Clear parent and depth arrays for girth and cycle related functions.
   for (v=0; v<nvertices; ++v) {
@@ -100,6 +102,33 @@ int _solver_helper(int *lil, int nvertices, int nedges,
       &bfs_ws, depth_ws,
       &s3table, low, high, s3solution);
 
+  // Check that the solver at least found the right number of vertices.
+  assert(k == solver.nsolution);
+
+  // Allocate some memory for comparing solutions.
+  int *expected_set = (int *) calloc(max_nvertices, sizeof(int));
+  int *observed_set = (int *) calloc(max_nvertices, sizeof(int));
+  for (i=0; i<k; ++i) {
+    v = expected_solution[i];
+    expected_set[v] = 1;
+  }
+  for (i=0; i<solver.nsolution; ++i) {
+    v = solver.solution[i];
+    observed_set[v] = 1;
+  }
+  int mismatch_count = 0;
+  for (v=0; v<max_nvertices; ++v) {
+    printf("observed: %d  expected: %d\n",
+        observed_set[v], expected_set[v]);
+    if (observed_set[v] != expected_set[v]) {
+      mismatch_count++;
+    }
+  }
+  if (mismatch_count) {
+    printf("%d mismatches\n", mismatch_count);
+    failflag = 1;
+  }
+
   // Print the graph after some re-ordering.
   // Note that this does not reflect the re-ordering
   // of components within the solver.
@@ -113,7 +142,7 @@ int _solver_helper(int *lil, int nvertices, int nedges,
   }
   printf("\n");
 
-  return 1;
+  return failflag;
 }
 
 
@@ -386,6 +415,20 @@ int test_duelling_cycles()
   return _solver_helper(lil, nvertices, nedges, k, expected_solution);
 }
 
+int test_pure_isolation()
+{
+  // 0           4
+  //      1
+  //  2      3
+  //
+  int *lil;
+  int nvertices = 5;
+  int nedges = 0;
+  int k = 5;
+  int expected_solution[] = {0, 1, 2, 3, 4};
+  return _solver_helper(lil, nvertices, nedges, k, expected_solution);
+}
+
 int main()
 {
   int nfails = 0;
@@ -394,6 +437,7 @@ int main()
   nfails += test_three_cycles();
   nfails += test_menagerie();
   nfails += test_duelling_cycles();
+  nfails += test_pure_isolation();
 
   if (nfails) {
     printf("failed testing: %d tests failed\n", nfails);
