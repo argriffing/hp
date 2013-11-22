@@ -11,7 +11,8 @@
 
 
 int solve_potential_bond_graph(
-    const int *row_ptr, const int *col_ind, int nvertices, int k)
+    const int *row_ptr, const int *col_ind, int nvertices, int k,
+    int *binary_solution, int *pbest_score)
 {
   int failflag = 0;
 
@@ -82,25 +83,18 @@ int solve_potential_bond_graph(
       &bfs_ws, depth_ws,
       &s3table, low, high, s3solution);
 
-  int *binary_solution = (int *) calloc(nvertices, sizeof(int));
+  // Fill the output values.
   for (i=0; i<solver.nsolution; ++i) {
     v = solver.solution[i];
     binary_solution[v] = 1;
   }
-
-  // Print the score and the binary representation.
-  printf("%d\n", solver.score);
-  for (v=0; v<nvertices; ++v) {
-    printf("%d", binary_solution[v]);
-  }
-  printf("\n");
+  *pbest_score = solver.score;
 
   // Free the memory.
   bfs_ws_destroy(&bfs_ws);
   ccgraph_destroy(&g);
   s3table_destroy(&s3table);
   solver_destroy(&solver);
-  free(binary_solution);
   free(high);
   free(low);
   free(s3solution);
@@ -329,7 +323,19 @@ int main(int argc, char *argv[])
   }
 
   // Solve a densest k-subgraph problem on the potential bond graph.
-  int failflag = solve_potential_bond_graph(row_ptr, col_ind, nvertices, k);
+  int binary_solution[nvertices];
+  memset(binary_solution, 0, sizeof binary_solution);
+
+  int best_score = -1;
+  int failflag = solve_potential_bond_graph(row_ptr, col_ind, nvertices, k,
+      binary_solution, &best_score);
+
+  // Print the score and the binary representation.
+  printf("%d\n", best_score);
+  for (v=0; v<nvertices; ++v) {
+    printf("%d", binary_solution[v]);
+  }
+  printf("\n");
 
   // Free the csr graph.
   free(row_ptr);
