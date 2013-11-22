@@ -132,15 +132,9 @@ void _ccgraph_compute_component(CCGRAPH *p,
     // then print some stuff for debugging.
     if (component_labels[v_global] != -1) {
 
-      // Print the csr graph and cause an assertion error.
-      int debug_v, debug_w;
-      int debug_i;
-      for (debug_v=0; debug_v<p->nvertices; ++debug_v) {
-        for (debug_i=row_ptr[debug_v]; debug_i<row_ptr[debug_v+1]; ++debug_i) {
-          debug_w = col_ind[debug_i];
-          printf("%d -> %d\n", debug_v, debug_w);
-        }
-      }
+      // Print the csr graph and the component label,
+      // and raise an assertion error.
+      print_csr_graph(row_ptr, col_ind, p->nvertices);
       printf("component label: %d\n", component_labels[v_global]);
       assert(false);
     }

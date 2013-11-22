@@ -17,6 +17,7 @@
 #include "assert.h"
 #include "stdlib.h"
 #include "stdio.h"
+#include "stdbool.h"
 
 #include "connectedcomponents.h"
 #include "subsetsum.h"
@@ -459,7 +460,7 @@ int _move_smallest_cycle_to_front(
 
 
 // The connected component decomposition is assumed to have been performed.
-int solver_toplevel(SOLVER *solver,
+void solver_toplevel(SOLVER *solver,
     const int *row_ptr, const int *col_ind, CCGRAPH *ccgraph, int k,
     int *va_trace, int *vb_trace,
     BFS_WS *bfs_ws, int *depth_ws,
@@ -576,6 +577,12 @@ int solve_potential_bond_graph(
       va_trace, vb_trace,
       &bfs_ws, depth_ws,
       &s3table, low, high, s3solution);
+
+  // Require that the solution is complete.
+  if (solver.nsolution != nvertices) {
+    print_csr_graph(row_ptr, col_ind, nvertices);
+    assert(false);
+  }
 
   // Fill the output values.
   for (i=0; i<solver.nsolution; ++i) {

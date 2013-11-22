@@ -1,5 +1,11 @@
 // Sparse matrix format conversion.
 // List of lists to compressed row storage.
+
+#include "sparsetools.h"
+
+#include "stdio.h"
+
+
 void lil_to_csr(int nvertices, int nedges,
     int *lil_in, int *row_ptr_out, int *col_ind_out)
 {
@@ -41,3 +47,14 @@ void csr_degree_min_max(
   }
 }
 
+void print_csr_graph(const int *row_ptr, const int *col_ind, int n)
+{
+  int i, v, w;
+  printf("printing csr graph with %d vertices\n", n);
+  for (v=0; v<n; ++v) {
+    for (i=row_ptr[v]; i<row_ptr[v+1]; ++i) {
+      w = col_ind[i];
+      printf("%d -> %d\n", v, w);
+    }
+  }
+}

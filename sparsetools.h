@@ -10,4 +10,6 @@ void csr_degree_min_max(
     const int *row_ptr, int nvertices,
     int *min_degree, int *max_degree);
 
+void print_csr_graph(const int *row_ptr, const int *col_ind, int n);
+
 #endif
