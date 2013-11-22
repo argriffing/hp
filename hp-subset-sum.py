@@ -39,7 +39,7 @@ def main(sizes):
         nflat = ncols - ncorr
         top = 'rurdr' * ncorr + 'rrr' * nflat
 
-        # The bottom of some teeth may have some corregations.
+        # The bottom of some teeth may have some corrugations.
         ncorr = nterms
         nflat = ncols - nterms
         bot = 'ldlul' * ncorr + 'lll' * nflat

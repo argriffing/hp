@@ -331,6 +331,7 @@ int main(int argc, char *argv[])
       binary_solution, &best_score);
 
   // Print the score and the binary representation.
+  int v;
   printf("%d\n", best_score);
   for (v=0; v<nvertices; ++v) {
     printf("%d", binary_solution[v]);
