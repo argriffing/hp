@@ -25,6 +25,7 @@ typedef struct tag_GRID
   int radius;
   int origin_row;
   int origin_col;
+  int origin_index;
   int nrows;
   int ncols;
   int area;

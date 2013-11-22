@@ -9,6 +9,7 @@ void grid_init(GRID *p, int n)
   p->area = p->nrows * p->ncols;
   p->origin_row = p->radius;
   p->origin_col = p->radius;
+  p->origin_index = p->origin_row * p->ncols + p->origin_col;
   p->data = (int *) malloc(p->area * sizeof(int));
   int i;
   for (i=0; i<p->area; ++i) {

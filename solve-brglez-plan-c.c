@@ -107,39 +107,53 @@ typedef struct tagPLANC_SOLVER_INFO {
 void rsolve(PLANC_SEARCH_INFO *info,
     int nsteps, int degree_sum, int grid_index)
 {
+  int direction, i;
+  int neighbor, neighbor_index, neighbor_degree;
 
-  int direction, neighbor_index, neighbor, neighbor_degree, my_degree;
-
+  // We have landed on a grid position that is guaranteed to be empty.
   // Summarize the progress.
   int nsites_curr = nsteps + 1;
   int nsites_remaining = n - nsites_curr;
 
-  // We have landed on a site that is guaranteed to be empty.
-  // Update some quantities that will need to be undone
+  // Make a list of neighbors that are not adjacent along the primary sequence.
+  int neighbors[3];
+  int nneighbors = 0;
+  for (direction=0; direction<4; ++direction) {
+    neighbor_index = grid_index + info->delta[direction];
+    neighbor = info->grid->data[neighbor_index];
+    if (neighbor != -1 && abs(nsteps - neighbor) > 1) {
+      neighbors[nneighbors++] = neighbor;
+    }
+  }
+
+  // Update the degree sum so that we can check a score bound.
+  degree_sum += 2 * nneighbors;
+
+  // Check the score bound that uses the degree sum.
+  // If we have no hope of beating the best score
+  // then do not explore the continuations of this partial sequence.
+  int degree_sum_score_bound = get_degree_sum_score_bound(
+      degree_sum, nsites_remaining);
+  if (degree_sum_score_bound <= info->best_score) {
+    return;
+  }
+
+  // Update some quantities that will need to be rolled back
   // before we return from this function. This includes:
   // - update the grid
   // - update the array of vertex degrees
   // - update the degree histogram
   // These could theoretically be handled by the stack,
   // but we use mutability because it is more efficient.
-  // We will also update the degree sum,
-  // but this will not need to be rolled back because it uses the stack.
   info->grid->data[grid_index] = nsteps;
-  my_degree = 0;
-  for (direction=0; direction<4; ++direction) {
-    neighbor_index = grid_index + info->delta[direction];
-    neighbor = info->grid->data[neighbor_index];
-    if (neighbor != -1) {
-      my_degree++;
-      neighbor_degree = info->degrees[neighbor];
-      info->degrees[neighbor]++;
-      info->degree_histogram[neighbor_degree]--;
-      info->degree_histogram[neighbor_degree+1]++;
-      degree_sum += 2;
-    }
+  for (i=0; i<nneighbors; ++i) {
+    neighbor = neighbors[i];
+    neighbor_degree = info->degrees[neighbor];
+    info->degrees[neighbor]++;
+    info->degree_histogram[neighbor_degree]--;
+    info->degree_histogram[neighbor_degree+1]++;
   }
-  info->degree_histogram[0]--;
-  info->degree_histogram[my_degree]++;
+  info->degree_histogram[nneighbors]++;
 
   // Check the sequence continuation in each direction.
   // For the first two steps, the number of directions is limited
@@ -154,7 +168,7 @@ void rsolve(PLANC_SEARCH_INFO *info,
 
     // Compute the grid index of the next site in the sequence.
     // If the grid is not empty at that position,
-    // then continue on to the next direction.
+    // then continue to the next direction.
     neighbor_index = grid_index + info->delta[direction];
     if (info->grid->data[neighbor_index] != -1) {
       continue;
@@ -167,8 +181,55 @@ void rsolve(PLANC_SEARCH_INFO *info,
     ++direction;
   }
 
-  // If the sequence is complete
-  // then evaluate the score.
+  // If the sequence is complete then compute a tighter score upper bound
+  // using the degree histogram.
+  // If the upper bound is better than the best score,
+  // then fully evaluate the score of the complete sequence.
+  // If the fully evaluated score is better than the best score,
+  // then update the search summary.
+  if (nsteps == info->n - 1) {
+
+    // Compute an upper bound.
+    int degree_hist_score_bound = get_degree_hist_score_bound(
+        info->degree_histogram, info->k);
+    if (degree_hist_score_bound > best_score) {
+
+      // Compute the potential bond csr graph
+      // by tracing the sequence from its origin.
+      int idx = info->grid->origin_index;
+      int next_idx;
+      info->row_ptr[0] = 0;
+      for (i=0; i<info->n; ++i) {
+        next_idx = -1;
+        for (direction=0; direction<4; ++direction) {
+          neighbor_index = idx + info->delta[direction];
+          neighbor = info->grid->data[neighbor_index];
+          if (neighbor != -1) {
+            if (neighbor == i+1) {
+              next_idx = neighbor_index;
+            } else if (abs(i - neighbor) > 1) {
+              info->col_ind[row_ptr[i+1]++] = neighbor;
+            }
+          }
+        }
+        idx = next_idx;
+      }
+
+      // Compute the score using the potential bond csr graph.
+
+    } // end degree hist upper bound check
+  }
+
+  // Roll back.
+  info->grid->data[grid_index] = -1;
+  for (i=0; i<nneighbors; ++i) {
+    neighbor = neighbors[i];
+    neighbor_degree = info->degrees[neighbor];
+    info->degrees[neighbor]--;
+    info->degree_histogram[neighbor_degree]--;
+    info->degree_histogram[neighbor_degree-1]++;
+  }
+  info->degree_histogram[nneighbors]--;
 }
 
 
