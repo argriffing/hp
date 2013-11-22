@@ -18,6 +18,7 @@
 
 #include "plancgrid.h"
 #include "bondsubgraph.h"
+#include "sparsetools.h"
 
 #define RIGHT 0
 #define UP 1
@@ -80,7 +81,11 @@ int get_degree_hist_score_bound(const int *degree_histogram, int k)
     k -= nchosen;
     max_degree_sum += degree * nchosen;
   }
-  assert(k == 0);
+
+  // Note that if the conformation is particularly bad,
+  // not all of the values of k must be used.
+  assert(k >= 0);
+
   int bound = max_degree_sum / 2;
   return bound;
 }
@@ -112,26 +117,27 @@ void fill_conformation_string(PLANC_SOLVER_INFO *info) {
   int v, neighbor;
   int direction;
   int neighbor_index;
-  int idx = info->grid->origin_index;
   int next_idx;
   
   // Define the map from directions to letters.
-  char hp[] = "xxxx";
-  hp[UP] = 'u';
-  hp[DOWN] = 'd';
-  hp[LEFT] = 'l';
-  hp[RIGHT] = 'r';
+  char compass_rose[] = "xxxx";
+  compass_rose[UP] = 'u';
+  compass_rose[DOWN] = 'd';
+  compass_rose[LEFT] = 'l';
+  compass_rose[RIGHT] = 'r';
 
-  // Fill the hp string.
+  // Fill the conformation string.
+  int idx = info->grid->origin_index;
   info->row_ptr[0] = 0;
   for (v=0; v<info->n; ++v) {
+    assert(idx > 0);
     next_idx = -1;
     for (direction=0; direction<4; ++direction) {
       neighbor_index = idx + info->delta[direction];
       neighbor = info->grid->data[neighbor_index];
       if (neighbor == v+1) {
         next_idx = neighbor_index;
-        info->hp_string[v] = hp[direction];
+        info->conformation_string[v] = compass_rose[direction];
       }
     }
     idx = next_idx;
@@ -192,6 +198,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
     info->degree_histogram[neighbor_degree+1]++;
   }
   info->degree_histogram[nneighbors]++;
+  info->degrees[nsteps] = nneighbors;
 
   // Check the sequence continuation in each direction.
   // For the first two steps, the number of directions is limited
@@ -233,6 +240,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
       int next_idx;
       info->row_ptr[0] = 0;
       for (i=0; i<info->n; ++i) {
+        assert(idx > -1);
         info->row_ptr[i+1] = info->row_ptr[i];
         next_idx = -1;
         for (direction=0; direction<4; ++direction) {
@@ -247,6 +255,36 @@ void rsolve(PLANC_SOLVER_INFO *info,
           }
         }
         idx = next_idx;
+      }
+
+      // Check the csr graph for debugging.
+      int csr_fail_flag = 0;
+      int nloops = csr_count_loops(info->row_ptr, info->col_ind, info->n);
+      if (nloops) {
+        printf("found %d loops\n", nloops);
+        csr_fail_flag = 1;
+      }
+      int csr_nvertices = info->row_ptr[info->n] - info->row_ptr[0];
+      for (i=0; i<csr_nvertices; ++i) {
+        if (info->col_ind[i] < 0 || info->col_ind[i] > info->n - 1) {
+          csr_fail_flag = 1;
+        }
+      }
+      if (csr_fail_flag) {
+        printf("bad csr graph\n");
+        printf("origin index: %d\n", info->grid->origin_index);
+        printf("value at origin: %d\n",
+            info->grid->data[info->grid->origin_index]);
+        print_csr_graph(info->row_ptr, info->col_ind, info->n);
+        int row, col;
+        for (row=0; row<info->grid->nrows; ++row) {
+          for (col=0; col<info->grid->ncols; ++col) {
+            i = row * info->grid->ncols + col;
+            printf("%4d", info->grid->data[i]);
+          }
+          printf("\n");
+        }
+        assert(false);
       }
 
       // Compute the score using the potential bond csr graph.
@@ -273,7 +311,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
             printf("unrecognized binary solution value %d\n", value);
             assert(0);
           }
-          info->hp_string[i] = hp_char;
+          info->hp_string[v] = hp_char;
         }
 
         // Update the conformation string using the current grid.
@@ -293,6 +331,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
     info->degree_histogram[neighbor_degree-1]++;
   }
   info->degree_histogram[nneighbors]--;
+  info->degrees[nsteps] = -1;
 }
 
 
@@ -328,8 +367,11 @@ int solve(int n, int k, int verbose,
   memset(binary_solution_ws, -1, sizeof binary_solution_ws);
 
   // Initialize csr graph workspaces.
+  // The row_ptr should have one more space than the number of vertices.
+  // The col_ind should have room for twice the max possible
+  // number of undirected edges.
   int row_ptr[n+1];
-  int col_ind[n+1];
+  int col_ind[2*(n+1)];
 
   // Aggregate solver info.
   // This might look like a lot of things,

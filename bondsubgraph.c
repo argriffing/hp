@@ -18,6 +18,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "stdbool.h"
+#include "string.h"
 
 #include "connectedcomponents.h"
 #include "subsetsum.h"
@@ -467,6 +468,8 @@ void solver_toplevel(SOLVER *solver,
     S3TABLE *s3table, int *low, int *high, int *s3solution
     )
 {
+  //printf("ccgraph nvertices: %d\n", ccgraph->nvertices);
+
   // Check that enough vertices are available.
   assert(solver->k <= ccgraph->nvertices);
 
@@ -579,12 +582,13 @@ int solve_potential_bond_graph(
       &s3table, low, high, s3solution);
 
   // Require that the solution is complete.
-  if (solver.nsolution != nvertices) {
+  if (solver.nsolution != k) {
     print_csr_graph(row_ptr, col_ind, nvertices);
     assert(false);
   }
 
   // Fill the output values.
+  memset(binary_solution, 0, nvertices * sizeof(int));
   for (i=0; i<solver.nsolution; ++i) {
     v = solver.solution[i];
     binary_solution[v] = 1;

@@ -47,6 +47,22 @@ void csr_degree_min_max(
   }
 }
 
+// A loop is a directed edge from a vertex to itself.
+int csr_count_loops(const int *row_ptr, const int *col_ind, int n)
+{
+  int i, v, w;
+  int nloops = 0;
+  for (v=0; v<n; ++v) {
+    for (i=row_ptr[v]; i<row_ptr[v+1]; ++i) {
+      w = col_ind[i];
+      if (v == w) {
+        nloops++;
+      }
+    }
+  }
+  return nloops;
+}
+
 void print_csr_graph(const int *row_ptr, const int *col_ind, int n)
 {
   int i, v, w;
