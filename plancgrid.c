@@ -1,5 +1,8 @@
 #include "plancgrid.h"
 
+#include "stdlib.h"
+
+
 void grid_init(GRID *p, int n)
 {
   p->n = n;

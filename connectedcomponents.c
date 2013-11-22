@@ -1,6 +1,7 @@
 #include "stdlib.h"
 #include "stdio.h"
 #include "assert.h"
+#include "stdbool.h"
 
 #include "connectedcomponents.h"
 #include "breadthfirst.h"
@@ -125,7 +126,25 @@ void _ccgraph_compute_component(CCGRAPH *p,
   // Set the labels.
   for (v_local=0; v_local<subgraph->nvertices; ++v_local) {
     v_global = subgraph->local_to_global[v_local];
-    assert(component_labels[v_global] == -1);
+
+    // None of these vertices should have component labels.
+    // If one of them does have a component label
+    // then print some stuff for debugging.
+    if (component_labels[v_global] != -1) {
+
+      // Print the csr graph and cause an assertion error.
+      int debug_v, debug_w;
+      int debug_i;
+      for (debug_v=0; debug_v<p->nvertices; ++debug_v) {
+        for (debug_i=row_ptr[debug_v]; debug_i<row_ptr[debug_v+1]; ++debug_i) {
+          debug_w = col_ind[debug_i];
+          printf("%d -> %d\n", debug_v, debug_w);
+        }
+      }
+      printf("component label: %d\n", component_labels[v_global]);
+      assert(false);
+    }
+
     component_labels[v_global] = label;
   }
 

@@ -14,8 +14,10 @@
 #include "string.h"
 #include "stdbool.h"
 #include "unistd.h"
+#include "assert.h"
 
 #include "plancgrid.h"
+#include "bondsubgraph.h"
 
 #define RIGHT 0
 #define UP 1
@@ -74,7 +76,7 @@ int get_degree_hist_score_bound(const int *degree_histogram, int k)
   int max_degree_sum = 0;
   int degree;
   for (degree=3; degree>=0; --degree) {
-    int nchosen = int_min(histogram[degree], k);
+    int nchosen = int_min(degree_histogram[degree], k);
     k -= nchosen;
     max_degree_sum += degree * nchosen;
   }
@@ -95,25 +97,61 @@ typedef struct tagPLANC_SOLVER_INFO {
   char *hp_string;
   int best_score;
   int score_upper_bound;
-  GRID *pgrid;
+  GRID *grid;
   int *delta;
   int *degrees;
   int *degree_histogram;
+  int *binary_solution_ws;
+  int *row_ptr;
+  int *col_ind;
 } PLANC_SOLVER_INFO;
+
+
+// Fill the conformation string using the current grid.
+void fill_conformation_string(PLANC_SOLVER_INFO *info) {
+  int v, neighbor;
+  int direction;
+  int neighbor_index;
+  int idx = info->grid->origin_index;
+  int next_idx;
+  
+  // Define the map from directions to letters.
+  char hp[] = "xxxx";
+  hp[UP] = 'u';
+  hp[DOWN] = 'd';
+  hp[LEFT] = 'l';
+  hp[RIGHT] = 'r';
+
+  // Fill the hp string.
+  info->row_ptr[0] = 0;
+  for (v=0; v<info->n; ++v) {
+    next_idx = -1;
+    for (direction=0; direction<4; ++direction) {
+      neighbor_index = idx + info->delta[direction];
+      neighbor = info->grid->data[neighbor_index];
+      if (neighbor == v+1) {
+        next_idx = neighbor_index;
+        info->hp_string[v] = hp[direction];
+      }
+    }
+    idx = next_idx;
+  }
+}
 
 
 // Recursive solver.
 // TODO remove the recursion.
-void rsolve(PLANC_SEARCH_INFO *info,
+void rsolve(PLANC_SOLVER_INFO *info,
     int nsteps, int degree_sum, int grid_index)
 {
+  int v;
   int direction, i;
   int neighbor, neighbor_index, neighbor_degree;
 
   // We have landed on a grid position that is guaranteed to be empty.
   // Summarize the progress.
   int nsites_curr = nsteps + 1;
-  int nsites_remaining = n - nsites_curr;
+  int nsites_remaining = info->n - nsites_curr;
 
   // Make a list of neighbors that are not adjacent along the primary sequence.
   int neighbors[3];
@@ -167,16 +205,11 @@ void rsolve(PLANC_SEARCH_INFO *info,
     if (direction > 3) break;
 
     // Compute the grid index of the next site in the sequence.
-    // If the grid is not empty at that position,
-    // then continue to the next direction.
+    // If the grid is empty at that position, then recursively explore.
     neighbor_index = grid_index + info->delta[direction];
-    if (info->grid->data[neighbor_index] != -1) {
-      continue;
+    if (info->grid->data[neighbor_index] == -1) {
+      rsolve(info, nsteps+1, degree_sum, neighbor_index);
     }
-
-    // The grid is empty in the direction of interest,
-    // so proceed with the recursion.
-    rsolve(info, nsteps+1, degree_sum, neighbor_index);
 
     ++direction;
   }
@@ -192,7 +225,7 @@ void rsolve(PLANC_SEARCH_INFO *info,
     // Compute an upper bound.
     int degree_hist_score_bound = get_degree_hist_score_bound(
         info->degree_histogram, info->k);
-    if (degree_hist_score_bound > best_score) {
+    if (degree_hist_score_bound > info->best_score) {
 
       // Compute the potential bond csr graph
       // by tracing the sequence from its origin.
@@ -200,6 +233,7 @@ void rsolve(PLANC_SEARCH_INFO *info,
       int next_idx;
       info->row_ptr[0] = 0;
       for (i=0; i<info->n; ++i) {
+        info->row_ptr[i+1] = info->row_ptr[i];
         next_idx = -1;
         for (direction=0; direction<4; ++direction) {
           neighbor_index = idx + info->delta[direction];
@@ -208,7 +242,7 @@ void rsolve(PLANC_SEARCH_INFO *info,
             if (neighbor == i+1) {
               next_idx = neighbor_index;
             } else if (abs(i - neighbor) > 1) {
-              info->col_ind[row_ptr[i+1]++] = neighbor;
+              info->col_ind[info->row_ptr[i+1]++] = neighbor;
             }
           }
         }
@@ -216,6 +250,35 @@ void rsolve(PLANC_SEARCH_INFO *info,
       }
 
       // Compute the score using the potential bond csr graph.
+      int score = -1;
+      int failflag =  solve_potential_bond_graph(
+          info->row_ptr, info->col_ind, info->n, info->k,
+          info->binary_solution_ws, &score);
+      assert(!failflag);
+      if (score > info->best_score) {
+
+        // Update the best score.
+        info->best_score = score;
+
+        // Update the hp string using the 'plan b' solution.
+        for (v=0; v<info->n; ++v) {
+          char hp_char = '?';
+          int value = info->binary_solution_ws[v];
+          if (value == 1) {
+            hp_char = 'h';
+          } else if (value == 0) {
+            hp_char = 'p';
+          } else {
+            printf("vertex index %d\n", v);
+            printf("unrecognized binary solution value %d\n", value);
+            assert(0);
+          }
+          info->hp_string[i] = hp_char;
+        }
+
+        // Update the conformation string using the current grid.
+        fill_conformation_string(info);
+      }
 
     } // end degree hist upper bound check
   }
@@ -235,13 +298,9 @@ void rsolve(PLANC_SEARCH_INFO *info,
 
 // Inputs are sequence length n, sequence weight k, and verbosity.
 // Outputs are the conformation string and the hydrophobic/polar string.
-void solve(int n, int k, int verbose,
+int solve(int n, int k, int verbose,
     char *conformation_string, char *hp_string)
 {
-  int i;
-  int degree_histogram[] = {0, 0, 0, 0};
-  int degree_sum = 0;
-
   // Initialize the grid.
   GRID grid;
   grid_init(&grid, n);
@@ -258,60 +317,46 @@ void solve(int n, int k, int verbose,
   int degrees[n];
   memset(degrees, 0, sizeof degrees);
 
-  // Track the best score.
-  // Negative score means that no feasible solution has been found.
-  int best_score = -1;
-
   // Initialize the partial sequence length.
   int nsteps = 0;
+  int grid_index = grid.origin_index;
+  int degree_histogram[] = {0, 0, 0, 0};
+  int degree_sum = 0;
 
-  // Put the initial vertex at the origin of the grid.
-  current_grid_index = grid.origin_row * grid.nrows + grid.origin_col;
-  grid.data[current_grid_index] = 0;
+  // Initialize the binary solution workspace for the solver.
+  int binary_solution_ws[n];
+  memset(binary_solution_ws, -1, sizeof binary_solution_ws);
 
-  // Do the search.
-  // Stop the search if we reach the theoretical upper bound.
-  // Also stop the search if we exhaust the search space.
-  int score_upper_bound = get_score_upper_bound(n, k);
-  while (0 <= nsteps && best_score < score_upper_bound) {
+  // Initialize csr graph workspaces.
+  int row_ptr[n+1];
+  int col_ind[n+1];
 
-    int ncurr = nsteps + 1;
-    int nsites_remaining = n - ncurr;
+  // Aggregate solver info.
+  // This might look like a lot of things,
+  // but it doesn't even include initialization of the 'plan b' solver.
+  // The 'plan b' solver is inefficiently initialized and destroyed
+  // every time it is used...
+  PLANC_SOLVER_INFO info;
+  info.n = n;
+  info.k = k;
+  info.verbose = verbose;
+  info.conformation_string = conformation_string;
+  info.hp_string = hp_string;
+  info.best_score = -1;
+  info.score_upper_bound = get_score_upper_bound(n, k);
+  info.grid = &grid;
+  info.delta = delta;
+  info.degrees = degrees;
+  info.degree_histogram = degree_histogram;
+  info.binary_solution_ws = binary_solution_ws;
+  info.row_ptr = row_ptr;
+  info.col_ind = col_ind;
 
-    // Check the score bound that uses the degree sum.
-    // If we have no hope of beating the best score then backtrack.
-    int degree_sum_score_bound = get_degree_sum_score_bound(
-        degree_sum, nsites_remaining);
-    if (degree_sum_score_bound <= best_score) {
-      ncurr--;
-      continue;
-    }
-
-    if (!nsites_remaining) {
-
-      // Check the score bound that uses the degree histogram.
-      // If we have no hope of beating the best score then backtrack.
-      int degree_hist_score_bound = get_degree_hist_score_bound(
-          degree_histogram, k);
-      if (degree_sum_score_bound <= best_score) {
-        ncurr--;
-        continue;
-      }
-
-      // Fully evaluate the complete sequence.
-      ;
-    }
-
-    // At this point we have an incomplete sequence
-    // whose completion will not obviously fail to beat the best score.
-    // If the direction is positive then we have already failed at
-    // attempting a search direction
-    // 4 then we have tried all of the directions.
-    // Otherwise try the current direction
-  }
+  // Solve the problem recursively.
+  rsolve(&info, nsteps, degree_sum, grid_index);
 
   grid_destroy(&grid);
-  return best_score;
+  return info.best_score;
 }
 
 
@@ -374,7 +419,7 @@ int main(int argc, char **argv)
   memset(hp_string, 0, sizeof hp_string);
 
   // Solve the puzzle.
-  int score = solve(n, k, v, conformation_string, hp_string);
+  int score = solve(n, k, verbose, conformation_string, hp_string);
 
   // Report the optimal score, as well as the conformation string
   // and hp string for which the optimal score is attained.
