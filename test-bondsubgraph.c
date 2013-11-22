@@ -450,6 +450,49 @@ int test_pure_isolation()
   return _solver_helper(lil, nvertices, nedges, k, expected_solution);
 }
 
+// This test has a huge component that gives us indigestion.
+int test_indigestion()
+{
+  //     4       17
+  //  5                   19           9
+  //        20                  10
+  //    22        12                          14
+  //                        15
+  //   3 -- 6
+  //                               2 ----- 23
+  //                                \
+  //                                 \
+  //                                  \
+  //                                   7
+  //
+  //  16 -- 25 -- 18 -- 21 -- 24 -- 1
+  //   |    |                       |
+  //  13 -- 0 --- 11 -------------- 8
+  //
+  int lil[] = {
+    23, 2,
+    2, 7,
+    3, 6,
+    16, 25,
+    25, 18,
+    18, 21,
+    21, 24,
+    24, 1,
+    1, 8,
+    8, 11,
+    11, 0,
+    0, 13,
+    13, 16,
+    0, 25,
+  };
+  int nvertices = 26;
+  int nedges = 14;
+  int k = 6;
+  int expected_solution[] = {0, 13, 16, 25, 11, 18};
+  return _solver_helper(lil, nvertices, nedges, k, expected_solution);
+}
+
+
 int main()
 {
   int nfails = 0;
@@ -459,6 +502,7 @@ int main()
   nfails += test_menagerie();
   nfails += test_duelling_cycles();
   nfails += test_pure_isolation();
+  nfails += test_indigestion();
 
   if (nfails) {
     printf("failed testing: %d tests failed\n", nfails);

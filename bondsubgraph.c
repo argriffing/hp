@@ -19,6 +19,7 @@
 #include "stdio.h"
 #include "stdbool.h"
 #include "string.h"
+#include "assert.h"
 
 #include "connectedcomponents.h"
 #include "subsetsum.h"
@@ -215,10 +216,12 @@ void solver_sort_components(SOLVER *solver)
 // The s3table object and the low, high, and s3solution arrays are workspaces
 // for solving the subset sum problem.
 //
-void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
+int solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
     S3TABLE *s3table, int *low, int *high, int *s3solution
     )
 {
+  int errorflag = 0;
+
   // Get the number of available components that have cycles.
   // Get the sum of vertices of these components.
   int cyclic_component_count = 0;
@@ -245,7 +248,7 @@ void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
   // If the cycle-containing components do not collectively have enough
   // vertices, then no solution to the subset sum problem is possible.
   if (solver->k > cyclic_component_vertex_count) {
-    return;
+    return errorflag;
   }
 
   //printf("attempting to solve subset sum\n");
@@ -271,7 +274,7 @@ void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
 
   // If the attempt failed, then return.
   if (!success) {
-    return;
+    return errorflag;
   }
 
   // If we have successfully found a solution to the subset sum problem,
@@ -289,13 +292,17 @@ void solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
 
   // Check that the number of vertices added is exactly k.
   // Then set k to zero, showing that we have finished the search.
-  assert(solver->k == nvertices_added);
+  if (solver->k != nvertices_added) {
+    printf("subset sum solver failure\n");
+    errorflag = 1;
+  }
   solver->k = 0;
 
   // Because of the graph constraints and the vertex ordering,
   // the number of edges added is exactly equal to the number
   // of vertices added, when the subset sum problem has been solved.
   solver->score += nvertices_added;
+  return errorflag;
 }
 
 
@@ -493,7 +500,12 @@ void solver_toplevel(SOLVER *solver,
 
   // Attempt to solve the subset sum problem, if appropriate.
   //printf("solving subset sum if applicable\n");
-  solver_subset_sum(solver, ccgraph, s3table, low, high, s3solution);
+  int error_flag = solver_subset_sum(solver, ccgraph,
+      s3table, low, high, s3solution);
+  if (error_flag) {
+    print_csr_graph(row_ptr, col_ind, ccgraph->nvertices);
+    assert(false);
+  }
   if (!solver->k) return;
 
   // Add components according to their order within the array,
