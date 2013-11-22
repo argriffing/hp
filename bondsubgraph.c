@@ -135,13 +135,16 @@ void solver_do_special(SOLVER *solver,
   }
   //printf("found special component\n");
 
-  // If the number of vertices in the special component is at most k,
-  // then add the special component into the solution
-  // and remove it from the list of available components.
-  
-  // Add the vertices of the special component into the solution array.
-  int v_local, v_global;
+  // If the number of vertices in the special component is greater than k,
+  // then process it as a regular cycle-containing component.
   BSG_COMPONENT *bsg = solver->components[special_idx];
+  if (bsg->nvertices > solver->k) {
+    return;
+  }
+
+  // Otherwise add the special component into the solution
+  // and remove it from the list of available components.
+  int v_local, v_global;
   for (v_local=0; v_local<bsg->nvertices; ++v_local) {
     v_global = ccgraph_local_to_global(ccgraph, bsg->component, v_local);
     solver->solution[solver->nsolution++] = v_global;
@@ -294,6 +297,11 @@ int solver_subset_sum(SOLVER *solver, CCGRAPH *ccgraph,
   // Then set k to zero, showing that we have finished the search.
   if (solver->k != nvertices_added) {
     printf("subset sum solver failure\n");
+    printf("%d cyclic components\n", cyclic_component_count);
+    int i;
+    for (i=0; i<cyclic_component_count; ++i) {
+      printf("component %d  low %d  high %d\n", i, low[i], high[i]);
+    }
     errorflag = 1;
   }
   solver->k = 0;
