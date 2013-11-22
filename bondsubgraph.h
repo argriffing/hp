@@ -56,6 +56,10 @@ int _move_smallest_cycle_to_front(
     BFS_WS *bfs_ws, int *depth_ws
     );
 
+int solve_potential_bond_graph(
+    const int *row_ptr, const int *col_ind, int nvertices, int k,
+    int *binary_solution, int *pbest_score);
+
 
 #endif
 
