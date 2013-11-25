@@ -19,9 +19,14 @@
 #ifndef PLANCGRID_HEADER
 #define PLANCGRID_HEADER
 
+#define RIGHT 0
+#define UP 1
+#define LEFT 2
+#define DOWN 3
+
 #define GRID_EMPTY (-1)
 #define GRID_PROBE (-2)
-#define GRID_BORDER (-10)
+#define GRID_BORDER (-5)
 
 
 typedef struct tag_GRID
