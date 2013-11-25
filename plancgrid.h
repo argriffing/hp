@@ -19,6 +19,11 @@
 #ifndef PLANCGRID_HEADER
 #define PLANCGRID_HEADER
 
+#define GRID_EMPTY (-1)
+#define GRID_PROBE (-2)
+#define GRID_BORDER (-10)
+
+
 typedef struct tag_GRID
 {
   int n;

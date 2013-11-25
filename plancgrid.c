@@ -6,7 +6,7 @@
 void grid_init(GRID *p, int n)
 {
   p->n = n;
-  p->radius = n;
+  p->radius = n+1;
   p->nrows = 2*p->radius + 1;
   p->ncols = 2*p->radius + 1;
   p->area = p->nrows * p->ncols;
@@ -14,9 +14,22 @@ void grid_init(GRID *p, int n)
   p->origin_col = p->radius;
   p->origin_index = p->origin_row * p->ncols + p->origin_col;
   p->data = (int *) malloc(p->area * sizeof(int));
+
+  // Clear the grid.
   int i;
   for (i=0; i<p->area; ++i) {
-    p->data[i] = -1;
+    p->data[i] = GRID_EMPTY;
+  }
+
+  // Add the borders.
+  int row, col;
+  for (row=0; row<p->nrows; ++row) {
+    grid_set(p, row, 0, GRID_BORDER);
+    grid_set(p, row, p->ncols-1, GRID_BORDER);
+  }
+  for (col=0; col<p->ncols; ++col) {
+    grid_set(p, col, 0, GRID_BORDER);
+    grid_set(p, col, p->nrows-1, GRID_BORDER);
   }
 }
 
