@@ -232,13 +232,23 @@ void compute_potential_bond_csr_graph(PLANC_SOLVER_INFO *info)
 typedef struct tagSEARCH_OPTION {
   int direction;
   int grid_index;
-  int distance_from_origin;
+  int d;
 } SEARCH_OPTION;
 
+// For a bubble-like sort of two or three elements.
+void search_option_minswap(SEARCH_OPTION **options, int i, int j)
+{
+  SEARCH_OPTION *pa = options[i]->d < options[j]->d ? options[i] : options[j];
+  SEARCH_OPTION *pb = options[i]->d < options[j]->d ? options[j] : options[i];
+  options[i] = pa;
+  options[j] = pb;
+}
+
+// For c qsort.
 int _compare_search_option_pointers(const void *a, const void *b)
 {
-  int da = (*(SEARCH_OPTION **)a)->distance_from_origin;
-  int db = (*(SEARCH_OPTION **)b)->distance_from_origin;
+  int da = (*(SEARCH_OPTION **)a)->d;
+  int db = (*(SEARCH_OPTION **)b)->d;
   return da - db;
 }
 
@@ -324,15 +334,25 @@ void rsolve(PLANC_SOLVER_INFO *info,
         p = search_options[nsearch_options];
         p->direction = direction;
         p->grid_index = neighbor_index;
-        p->distance_from_origin = info->distance_from_origin[p->grid_index];
+        p->d = info->distance_from_origin[p->grid_index];
         nsearch_options++;
       }
     }
 
     // Sort the search options
     // according to increasing distance from the origin.
-    qsort(search_options, nsearch_options,
-        sizeof(SEARCH_OPTION *), _compare_search_option_pointers);
+    if (nsearch_options > 1) {
+      search_option_minswap(search_options, 0, 1);
+    }
+    if (nsearch_options > 2) {
+      search_option_minswap(search_options, 1, 2);
+      search_option_minswap(search_options, 0, 1);
+    }
+    if (nsearch_options > 3) {
+      assert(0);
+    }
+    //qsort(search_options, nsearch_options,
+        //sizeof(SEARCH_OPTION *), _compare_search_option_pointers);
 
     // Explore the search options according to the preferred ordering.
     for (i=0; i<nsearch_options; ++i) {
