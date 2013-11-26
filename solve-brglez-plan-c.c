@@ -25,6 +25,70 @@
 #define LEFT 2
 #define DOWN 3
 
+
+///////////////////////////////////////////////////////////////////////////////
+// These functions are for visualization.
+
+
+// Fill the conformation string using the current grid.
+void fill_conformation_string(char *conformation_string,
+    GRID *grid, const int *delta, int n)
+{
+  int v, neighbor;
+  int direction;
+  int neighbor_index;
+  int next_idx;
+  
+  // Define the map from directions to letters.
+  char compass_rose[] = "xxxx";
+  compass_rose[UP] = 'u';
+  compass_rose[DOWN] = 'd';
+  compass_rose[LEFT] = 'l';
+  compass_rose[RIGHT] = 'r';
+
+  // Fill the conformation string.
+  int idx = grid->origin_index;
+  for (v=0; v<n; ++v) {
+    assert(idx > 0);
+    next_idx = -1;
+    for (direction=0; direction<4; ++direction) {
+      neighbor_index = idx + delta[direction];
+      neighbor = grid->data[neighbor_index];
+      if (neighbor == v+1) {
+        next_idx = neighbor_index;
+        conformation_string[v] = compass_rose[direction];
+      }
+    }
+    idx = next_idx;
+  }
+}
+
+
+// Fill the hp string using the current solution.
+void fill_hp_string(char *hp_string, const int *binary_solution, int n)
+{
+  int v;
+  for (v=0; v<n; ++v) {
+    char hp_char;
+    int value = binary_solution[v];
+    if (value == 1) {
+      hp_char = 'h';
+    } else if (value == 0) {
+      hp_char = 'p';
+    } else {
+      printf("vertex index %d\n", v);
+      printf("unrecognized binary solution value %d\n", value);
+      assert(0);
+    }
+    hp_string[v] = hp_char;
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Bounds
+
+
 int int_max(int a, int b) {return a > b ? a : b;}
 int int_min(int a, int b) {return a < b ? a : b;}
 
@@ -91,6 +155,10 @@ int get_degree_hist_score_bound(const int *degree_histogram, int k)
 }
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Solver functions.
+
+
 // This structure just aggregates some things
 // that do not change within the recursive solver.
 // It is not really a coherent object.
@@ -106,43 +174,13 @@ typedef struct tagPLANC_SOLVER_INFO {
   int *delta;
   int *degrees;
   int *degree_histogram;
+  int *direction_histogram;
   int *binary_solution_ws;
   int *row_ptr;
   int *col_ind;
 } PLANC_SOLVER_INFO;
 
 
-// Fill the conformation string using the current grid.
-void fill_conformation_string(PLANC_SOLVER_INFO *info) {
-  int v, neighbor;
-  int direction;
-  int neighbor_index;
-  int next_idx;
-  
-  // Define the map from directions to letters.
-  char compass_rose[] = "xxxx";
-  compass_rose[UP] = 'u';
-  compass_rose[DOWN] = 'd';
-  compass_rose[LEFT] = 'l';
-  compass_rose[RIGHT] = 'r';
-
-  // Fill the conformation string.
-  int idx = info->grid->origin_index;
-  info->row_ptr[0] = 0;
-  for (v=0; v<info->n; ++v) {
-    assert(idx > 0);
-    next_idx = -1;
-    for (direction=0; direction<4; ++direction) {
-      neighbor_index = idx + info->delta[direction];
-      neighbor = info->grid->data[neighbor_index];
-      if (neighbor == v+1) {
-        next_idx = neighbor_index;
-        info->conformation_string[v] = compass_rose[direction];
-      }
-    }
-    idx = next_idx;
-  }
-}
 
 
 // Recursive solver.
@@ -200,25 +238,25 @@ void rsolve(PLANC_SOLVER_INFO *info,
   info->degree_histogram[nneighbors]++;
   info->degrees[nsteps] = nneighbors;
 
-  // Check the sequence continuation in each direction.
-  // For the first two steps, the number of directions is limited
-  // to avoid redundantly searching conformations
-  // that are equivalent by symmetry.
-  direction = 0;
-  while (info->best_score < info->score_upper_bound) {
+  // Check the sequence continuation in all directions.
+  for (direction=0; direction<4; ++direction) {
+    if (info->best_score >= info->score_upper_bound) {
+      break;
+    }
     if (nsteps == info->n - 1) break;
-    if (nsteps == 0 && direction > 0) break;
-    if (nsteps == 1 && direction > 1) break;
-    if (direction > 3) break;
+
+    // These conditions avoid exploring redundant conformations.
+    if (info->direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+    if (info->direction_histogram[UP] == 0 && direction == DOWN) continue;
 
     // Compute the grid index of the next site in the sequence.
     // If the grid is empty at that position, then recursively explore.
     neighbor_index = grid_index + info->delta[direction];
     if (info->grid->data[neighbor_index] == -1) {
+      info->direction_histogram[direction]++;
       rsolve(info, nsteps+1, degree_sum, neighbor_index);
+      info->direction_histogram[direction]--;
     }
-
-    ++direction;
   }
 
   // If the sequence is complete then compute a tighter score upper bound
@@ -276,14 +314,6 @@ void rsolve(PLANC_SOLVER_INFO *info,
         printf("value at origin: %d\n",
             info->grid->data[info->grid->origin_index]);
         print_csr_graph(info->row_ptr, info->col_ind, info->n);
-        int row, col;
-        for (row=0; row<info->grid->nrows; ++row) {
-          for (col=0; col<info->grid->ncols; ++col) {
-            i = row * info->grid->ncols + col;
-            printf("%4d", info->grid->data[i]);
-          }
-          printf("\n");
-        }
         assert(false);
       }
 
@@ -293,29 +323,15 @@ void rsolve(PLANC_SOLVER_INFO *info,
           info->row_ptr, info->col_ind, info->n, info->k,
           info->binary_solution_ws, &score);
       assert(!failflag);
+
+      // If the score is better than the current best score, then update
+      // the best score, the hp string, and the conformation string.
       if (score > info->best_score) {
-
-        // Update the best score.
         info->best_score = score;
-
-        // Update the hp string using the 'plan b' solution.
-        for (v=0; v<info->n; ++v) {
-          char hp_char = '?';
-          int value = info->binary_solution_ws[v];
-          if (value == 1) {
-            hp_char = 'h';
-          } else if (value == 0) {
-            hp_char = 'p';
-          } else {
-            printf("vertex index %d\n", v);
-            printf("unrecognized binary solution value %d\n", value);
-            assert(0);
-          }
-          info->hp_string[v] = hp_char;
-        }
-
-        // Update the conformation string using the current grid.
-        fill_conformation_string(info);
+        fill_hp_string(info->hp_string,
+            info->binary_solution_ws, info->n);
+        fill_conformation_string(info->conformation_string,
+            info->grid, info->delta, info->n);
       }
 
     } // end degree hist upper bound check
@@ -360,6 +376,7 @@ int solve(int n, int k, int verbose,
   int nsteps = 0;
   int grid_index = grid.origin_index;
   int degree_histogram[] = {0, 0, 0, 0};
+  int direction_histogram[] = {0, 0, 0, 0};
   int degree_sum = 0;
 
   // Initialize the binary solution workspace for the solver.
@@ -390,6 +407,7 @@ int solve(int n, int k, int verbose,
   info.delta = delta;
   info.degrees = degrees;
   info.degree_histogram = degree_histogram;
+  info.direction_histogram = direction_histogram;
   info.binary_solution_ws = binary_solution_ws;
   info.row_ptr = row_ptr;
   info.col_ind = col_ind;
