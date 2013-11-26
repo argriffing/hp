@@ -1,5 +1,6 @@
 #include "plancgrid.h"
 
+#include "stdio.h"
 #include "stdlib.h"
 
 
@@ -28,8 +29,20 @@ void grid_init(GRID *p, int n)
     grid_set(p, row, p->ncols-1, GRID_BORDER);
   }
   for (col=0; col<p->ncols; ++col) {
-    grid_set(p, col, 0, GRID_BORDER);
-    grid_set(p, col, p->nrows-1, GRID_BORDER);
+    grid_set(p, 0, col, GRID_BORDER);
+    grid_set(p, p->nrows-1, col, GRID_BORDER);
+  }
+}
+
+void print_grid(GRID *p)
+{
+  int row, col;
+  printf("%d rows  %d cols\n", p->nrows, p->ncols);
+  for (row=0; row<p->nrows; ++row) {
+    for (col=0; col<p->ncols; ++col) {
+      printf("%3d ", grid_get(p, row, col));
+    }
+    printf("\n");
   }
 }
 

@@ -45,7 +45,7 @@ int count_empty_neighbor_groups(int *data, int ncols, int grid_index)
     int d8 = d4*2;
     if (labels[d8] == -1 && data[grid_index + offsets[d8]] == GRID_EMPTY) {
       int label = nlabels++;
-      printf("initializing group d8=%d nlabels=%d\n", d8, nlabels);
+      //printf("initializing group d8=%d nlabels=%d\n", d8, nlabels);
       labels[d8] = label;
       int di;
       for (di=-1; di<2; di+=2) {
@@ -53,8 +53,8 @@ int count_empty_neighbor_groups(int *data, int ncols, int grid_index)
         for (distance=1; distance<8; ++distance) {
           int i = true_modulo(d8 + distance * di, 8);
           if (labels[i] == -1 && data[grid_index + offsets[i]] == GRID_EMPTY) {
-            printf("filling d8=%d di=%d distance=%d i=%d\n",
-                d8, di, distance, i);
+            //printf("filling d8=%d di=%d distance=%d i=%d\n",
+                //d8, di, distance, i);
             labels[i] = label;
           } else {
             break;
@@ -93,6 +93,7 @@ void clear_grid_probes(GRID *grid, const int *index_ws, int nprobed)
     if (value != GRID_PROBE) {
       printf("Error: at grid index %d expected %d but found %d\n",
           grid_index, GRID_PROBE, value);
+      print_grid(grid);
       assert(false);
     }
     grid->data[grid_index] = GRID_EMPTY;
@@ -192,14 +193,7 @@ bool evaluate_void(GRID *grid, const int *delta,
 
       // If the void region includes the border then the region is not fillable.
       if (void_info->includes_border) {
-        printf("not fillable: includes border\n");
-        //int row, col;
-        //for (row=0; row<grid->nrows; ++row) {
-          //for (col=0; col<grid->ncols; ++col) {
-            //printf("%3d ", grid_get(grid, row, col));
-          //}
-          //printf("\n");
-        //}
+        //printf("not fillable: includes border\n");
         return false;
       }
 
@@ -208,7 +202,7 @@ bool evaluate_void(GRID *grid, const int *delta,
       int pc0 = void_info->parity_count[0];
       int pc1 = void_info->parity_count[1];
       if (pc0 + pc1 > nremaining) {
-        printf("not fillable: void area exceeds nremaining\n");
+        //printf("not fillable: void area exceeds nremaining\n");
         return false;
       }
 
@@ -217,11 +211,11 @@ bool evaluate_void(GRID *grid, const int *delta,
       // Among the void spaces with the opposite parity,
       // no space can have degree 1.
       if (void_info->parity_degree_histogram[parity_of_last_site][1] > 1) {
-        printf("not fillable: parity of last site degree-1\n");
+        //printf("not fillable: parity of last site degree-1\n");
         return false;
       }
       if (void_info->parity_degree_histogram[1 - parity_of_last_site][1] > 0) {
-        printf("not fillable: opposite of parity of last site degree-1\n");
+        //printf("not fillable: opposite of parity of last site degree-1\n");
         return false;
       }
 
@@ -231,7 +225,7 @@ bool evaluate_void(GRID *grid, const int *delta,
       int p;
       for (p=0; p<2; ++p) {
         if (void_info->parity_count[p] > nremaining_parity[p]) {
-          printf("not fillable: void has too many spaces of parity %d\n", p);
+          //printf("not fillable: void has too many spaces of parity %d\n", p);
           return false;
         }
       }

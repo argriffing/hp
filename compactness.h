@@ -15,13 +15,16 @@ typedef struct tagVOID_INFO {
 } VOID_INFO;
 
 
+int count_empty_neighbor_groups(int *data, int ncols, int grid_index);
+
+
 // This is called within the function that evaluates
 // a void region for fillability.
 void void_init(VOID_INFO *p);
 
 
 // Call this after evaluating the void region for fillability.
-void clear_grid_probes(GRID *grid, const int *index_ws, int nprobes);
+void clear_grid_probes(GRID *grid, const int *index_ws, int nprobed);
 
 
 // Detect properties of a connected region of empty grid points.

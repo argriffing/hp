@@ -52,5 +52,7 @@ void grid_set(GRID *p, int row, int col, int value);
 
 void grid_clear(GRID *p, int row, int col);
 
+void print_grid(GRID *p);
+
 #endif
 
