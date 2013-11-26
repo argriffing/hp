@@ -98,14 +98,24 @@ void init_empty_neighbor_group_lookup(int *lookup)
 // These functions are related to void region fillability.
 
 
+// This structure is not used outside of this module.
+typedef struct tagVOID_INFO {
+  int parity_degree_histogram[2][5];
+  int parity_count[2];
+  bool includes_border;
+  int nprobed;
+} VOID_INFO;
+
+
+// This function is internal to this module.
 // This is called within the function that evaluates
 // a void region for fillability.
-void void_init(VOID_INFO *p)
+void _void_init(VOID_INFO *p)
 {
   int degree;
   int parity;
   for (parity=0; parity<2; ++parity) {
-    for (degree=0; degree<4; ++degree) {
+    for (degree=0; degree<5; ++degree) {
       p->parity_degree_histogram[parity][degree] = 0;
     }
     p->parity_count[parity] = 0;
@@ -115,8 +125,9 @@ void void_init(VOID_INFO *p)
 }
 
 
+// This function is internal to this module.
 // Call this after evaluating the void region for fillability.
-void clear_grid_probes(GRID *grid, const int *index_ws, int nprobed)
+void _clear_grid_probes(GRID *grid, const int *index_ws, int nprobed)
 {
   int i;
   for (i=0; i<nprobed; ++i) {
@@ -143,13 +154,11 @@ void clear_grid_probes(GRID *grid, const int *index_ws, int nprobed)
 //
 // Return true if the void is fillable, otherwise return false.
 //
-bool evaluate_void(GRID *grid, const int *delta,
+bool _help_evaluate_void(GRID *grid, const int *delta,
     VOID_INFO *void_info, int *index_ws,
     int query_index, int void_index, int nremaining
     )
 {
-  // Initialize the info about the void region.
-  void_init(void_info);
 
   // Use a breadth first search.
   // Instead of using a csr graph and parent vertices,
@@ -278,6 +287,36 @@ bool evaluate_void(GRID *grid, const int *delta,
 }
 
 
+// Detect properties of a connected region of empty grid points.
+// The query_index is the grid index of the sequence site
+// which is adjacent to the void.
+// The void_index is the grid index of the void site contained
+// in the void region.
+// When the width of the grid is odd, we can just use the
+// parity of the grid index.
+//
+// Return true if the void is fillable, otherwise return false.
+//
+bool evaluate_void(GRID *grid, const int *delta, int *index_ws,
+    int query_index, int void_index, int nremaining)
+{
+  VOID_INFO void_info;
+
+  // Initialize the info about the void region.
+  _void_init(&void_info);
+
+  // Evaluate the void region for fillability.
+  bool fillable = _help_evaluate_void(grid, delta, &void_info, index_ws,
+      query_index, void_index, nremaining);
+
+  // Clear the grid probes that were used to evaluate the void region.
+  _clear_grid_probes(grid, index_ws, void_info.nprobed);
+
+  // Return the fillability of the void region.
+  return fillable;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // This function is for compactness detection.
 
@@ -340,4 +379,5 @@ int check_compactness(GRID *grid, const int *delta, int *index_ws)
   // Return the compactness flag.
   return compactness_flag;
 }
+
 

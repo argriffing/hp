@@ -26,8 +26,7 @@ int _compactness_test_helper(GRID *grid, const int *original_grid,
   memset(index_ws, -1, sizeof index_ws);
 
   // Evaluate a fillable void space.
-  VOID_INFO void_info;
-  bool fillable = evaluate_void(grid, delta, &void_info, index_ws,
+  bool fillable = evaluate_void(grid, delta, index_ws,
       query_index, void_index, nremaining);
 
   // Check the fillability.
@@ -41,14 +40,6 @@ int _compactness_test_helper(GRID *grid, const int *original_grid,
     printf("\n");
     failflag = 1;
   }
-
-  // Use the grid info to count the number of grid probes.
-  int pc0 = void_info.parity_count[0];
-  int pc1 = void_info.parity_count[1];
-  int nprobed = void_info.nprobed;
-
-  // Clear the grid probes.
-  clear_grid_probes(grid, index_ws, nprobed);
 
   // Check that the grid data has been restored
   // after having cleared the probes.

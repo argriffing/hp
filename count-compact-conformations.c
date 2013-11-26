@@ -69,11 +69,9 @@ int64_t count_continuations(GRID *grid, const int *delta,
         direction_histogram[direction]++;
         next_grid_index = grid_index + delta[direction];
         if (grid->data[next_grid_index] == GRID_EMPTY) {
-          VOID_INFO void_info;
           bool next_fillable = evaluate_void(
-              grid, delta, &void_info, index_ws,
+              grid, delta, index_ws,
               grid_index, next_grid_index, nsites_remaining);
-          clear_grid_probes(grid, index_ws, void_info.nprobed);
           if (next_fillable) {
             nwalks += count_continuations(grid, delta,
                 neighbor_lookup,
