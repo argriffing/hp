@@ -34,11 +34,6 @@
 void fill_conformation_string(char *conformation_string,
     GRID *grid, const int *delta, int n)
 {
-  int v, neighbor;
-  int direction;
-  int neighbor_index;
-  int next_idx;
-  
   // Define the map from directions to letters.
   char compass_rose[] = "xxxx";
   compass_rose[UP] = 'u';
@@ -48,12 +43,14 @@ void fill_conformation_string(char *conformation_string,
 
   // Fill the conformation string.
   int idx = grid->origin_index;
+  int v;
   for (v=0; v<n; ++v) {
-    assert(idx > 0);
-    next_idx = -1;
+    assert(idx >= 0);
+    int next_idx = -1;
+    int direction;
     for (direction=0; direction<4; ++direction) {
-      neighbor_index = idx + delta[direction];
-      neighbor = grid->data[neighbor_index];
+      int neighbor_index = idx + delta[direction];
+      int neighbor = grid->data[neighbor_index];
       if (neighbor == v+1) {
         next_idx = neighbor_index;
         conformation_string[v] = compass_rose[direction];
@@ -182,6 +179,54 @@ typedef struct tagPLANC_SOLVER_INFO {
 
 
 
+// Compute the potential bond csr graph by tracing the sequence from its origin.
+void compute_potential_bond_csr_graph(PLANC_SOLVER_INFO *info)
+{
+  int i;
+  int idx = info->grid->origin_index;
+  info->row_ptr[0] = 0;
+  for (i=0; i<info->n; ++i) {
+    assert(idx > -1);
+    info->row_ptr[i+1] = info->row_ptr[i];
+    int next_idx = -1;
+    int direction;
+    for (direction=0; direction<4; ++direction) {
+      int neighbor_index = idx + info->delta[direction];
+      int neighbor = info->grid->data[neighbor_index];
+      if (neighbor != -1) {
+        if (neighbor == i+1) {
+          next_idx = neighbor_index;
+        } else if (abs(i - neighbor) > 1) {
+          info->col_ind[info->row_ptr[i+1]++] = neighbor;
+        }
+      }
+    }
+    idx = next_idx;
+  }
+
+  // Check the csr graph for debugging.
+  int csr_fail_flag = 0;
+  int nloops = csr_count_loops(info->row_ptr, info->col_ind, info->n);
+  if (nloops) {
+    printf("found %d loops\n", nloops);
+    csr_fail_flag = 1;
+  }
+  int csr_nvertices = info->row_ptr[info->n] - info->row_ptr[0];
+  for (i=0; i<csr_nvertices; ++i) {
+    if (info->col_ind[i] < 0 || info->col_ind[i] > info->n - 1) {
+      csr_fail_flag = 1;
+    }
+  }
+  if (csr_fail_flag) {
+    printf("bad csr graph\n");
+    printf("origin index: %d\n", info->grid->origin_index);
+    printf("value at origin: %d\n",
+        info->grid->data[info->grid->origin_index]);
+    print_csr_graph(info->row_ptr, info->col_ind, info->n);
+    assert(0);
+  }
+}
+
 
 // Recursive solver.
 // TODO remove the recursion.
@@ -272,52 +317,8 @@ void rsolve(PLANC_SOLVER_INFO *info,
         info->degree_histogram, info->k);
     if (degree_hist_score_bound > info->best_score) {
 
-      // Compute the potential bond csr graph
-      // by tracing the sequence from its origin.
-      int idx = info->grid->origin_index;
-      int next_idx;
-      info->row_ptr[0] = 0;
-      for (i=0; i<info->n; ++i) {
-        assert(idx > -1);
-        info->row_ptr[i+1] = info->row_ptr[i];
-        next_idx = -1;
-        for (direction=0; direction<4; ++direction) {
-          neighbor_index = idx + info->delta[direction];
-          neighbor = info->grid->data[neighbor_index];
-          if (neighbor != -1) {
-            if (neighbor == i+1) {
-              next_idx = neighbor_index;
-            } else if (abs(i - neighbor) > 1) {
-              info->col_ind[info->row_ptr[i+1]++] = neighbor;
-            }
-          }
-        }
-        idx = next_idx;
-      }
-
-      // Check the csr graph for debugging.
-      int csr_fail_flag = 0;
-      int nloops = csr_count_loops(info->row_ptr, info->col_ind, info->n);
-      if (nloops) {
-        printf("found %d loops\n", nloops);
-        csr_fail_flag = 1;
-      }
-      int csr_nvertices = info->row_ptr[info->n] - info->row_ptr[0];
-      for (i=0; i<csr_nvertices; ++i) {
-        if (info->col_ind[i] < 0 || info->col_ind[i] > info->n - 1) {
-          csr_fail_flag = 1;
-        }
-      }
-      if (csr_fail_flag) {
-        printf("bad csr graph\n");
-        printf("origin index: %d\n", info->grid->origin_index);
-        printf("value at origin: %d\n",
-            info->grid->data[info->grid->origin_index]);
-        print_csr_graph(info->row_ptr, info->col_ind, info->n);
-        assert(false);
-      }
-
       // Compute the score using the potential bond csr graph.
+      compute_potential_bond_csr_graph(info);
       int score = -1;
       int failflag =  solve_potential_bond_graph(
           info->row_ptr, info->col_ind, info->n, info->k,
