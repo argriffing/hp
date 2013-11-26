@@ -362,7 +362,9 @@ int _help_test_groups(const int *data, int ncols,
     int grid_index, int expected)
 {
   printf("help test groups\n");
-  int ngroups = count_empty_neighbor_groups(data, ncols, grid_index);
+  int lookup[256];
+  init_empty_neighbor_group_lookup(lookup);
+  int ngroups = count_empty_neighbor_groups(lookup, data, ncols, grid_index);
   if (ngroups != expected) {
     printf("Error: expected %d empty neighbor groups but saw %d\n",
         expected, ngroups);

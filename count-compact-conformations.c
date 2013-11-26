@@ -16,7 +16,8 @@
 #define DOWN 3
 
 
-int64_t count_continuations(GRID *grid, const int *delta, int *index_ws,
+int64_t count_continuations(GRID *grid, const int *delta,
+    const int *neighbor_lookup, int *index_ws,
     int grid_index, int nsites_remaining, bool filling)
 {
   // We are guaranteed that the grid is empty at grid_index.
@@ -33,7 +34,7 @@ int64_t count_continuations(GRID *grid, const int *delta, int *index_ws,
   int next_grid_index;
 
   // Check the number of neighboring empty groups.
-  int ngroups = count_empty_neighbor_groups(
+  int ngroups = count_empty_neighbor_groups(neighbor_lookup,
       grid->data, grid->ncols, grid_index);
 
   if (nsites_remaining) {
@@ -44,7 +45,8 @@ int64_t count_continuations(GRID *grid, const int *delta, int *index_ws,
       for (direction=0; direction<4; ++direction) {
         next_grid_index = grid_index + delta[direction];
         if (grid->data[next_grid_index] == GRID_EMPTY) {
-          nwalks += count_continuations(grid, delta, index_ws,
+          nwalks += count_continuations(grid, delta,
+              neighbor_lookup, index_ws,
               next_grid_index, nsites_remaining, filling);
         }
       }
@@ -64,7 +66,8 @@ int64_t count_continuations(GRID *grid, const int *delta, int *index_ws,
               grid_index, next_grid_index, nsites_remaining);
           clear_grid_probes(grid, index_ws, void_info.nprobed);
           if (next_fillable) {
-            nwalks += count_continuations(grid, delta, index_ws,
+            nwalks += count_continuations(grid, delta,
+                neighbor_lookup, index_ws,
                 next_grid_index, nsites_remaining, next_fillable);
           }
         }
@@ -117,8 +120,13 @@ int64_t count_walks(int n)
   // This flag is true if we have begun filling a void region.
   bool filling = false;
 
+  // Initialize neighborhood lookup.
+  int neighborhood_lookup[256];
+  init_empty_neighbor_group_lookup(neighborhood_lookup);
+
   // Count the number of walks.
-  int64_t nwalks = count_continuations(&grid, delta, index_ws,
+  int64_t nwalks = count_continuations(&grid, delta,
+      neighborhood_lookup, index_ws,
       grid_index, n, filling);
 
   // Destroy the grid.

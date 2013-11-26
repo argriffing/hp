@@ -11,8 +11,12 @@
 #include "compactness.h"
 
 
+///////////////////////////////////////////////////////////////////////////////
+// These functions are related to void region detection.
+
+
 // Python uses this modulo function.
-// It treats negative numbers differently.
+// It treats negative numbers differently than does C modulo.
 int true_modulo(int n, int M)
 {
   return ((n % M) + M) % M;
@@ -20,18 +24,27 @@ int true_modulo(int n, int M)
 
 // This is a kind of weird function.
 // It is a helper function for enumerating compact self-avoiding walks.
-int count_empty_neighbor_groups(int *data, int ncols, int grid_index)
+// The center pointer points to the center of a local neighborhood
+// within a row-major rectangular array with ncols columns.
+int get_neighborhood_emptiness_mask(const int *center, int ncols)
 {
-  int offsets[] = {
-    1,
-    1-ncols,
-    -ncols,
-    -1-ncols,
-    -1,
-    -1+ncols,
-    ncols,
-    1+ncols,
-  };
+  return (
+      (*(center + 1)         == GRID_EMPTY) << 0 |
+      (*(center + 1 - ncols) == GRID_EMPTY) << 1 |
+      (*(center - ncols)     == GRID_EMPTY) << 2 |
+      (*(center - 1 - ncols) == GRID_EMPTY) << 3 |
+      (*(center - 1)         == GRID_EMPTY) << 4 |
+      (*(center - 1 + ncols) == GRID_EMPTY) << 5 |
+      (*(center + ncols)     == GRID_EMPTY) << 6 |
+      (*(center + 1 + ncols) == GRID_EMPTY) << 7
+      );
+}
+
+// The input mask is the neighborhood emptiness mask.
+// This function is slow and should only be used to construct a lookup table
+// for all 256 neighborhood emptiness masks.
+int _count_empty_neighbor_groups_slow(int mask)
+{
   int labels[] = {
     -1, -1, -1, -1,
     -1, -1, -1, -1
@@ -43,18 +56,15 @@ int count_empty_neighbor_groups(int *data, int ncols, int grid_index)
   int d4;
   for (d4=0; d4<4; ++d4) {
     int d8 = d4*2;
-    if (labels[d8] == -1 && data[grid_index + offsets[d8]] == GRID_EMPTY) {
+    if (labels[d8] == -1 && (mask & (1 << d8))) {
       int label = nlabels++;
-      //printf("initializing group d8=%d nlabels=%d\n", d8, nlabels);
       labels[d8] = label;
       int di;
       for (di=-1; di<2; di+=2) {
         int distance;
         for (distance=1; distance<8; ++distance) {
           int i = true_modulo(d8 + distance * di, 8);
-          if (labels[i] == -1 && data[grid_index + offsets[i]] == GRID_EMPTY) {
-            //printf("filling d8=%d di=%d distance=%d i=%d\n",
-                //d8, di, distance, i);
+          if (labels[i] == -1 && (mask & (1 << i))) {
             labels[i] = label;
           } else {
             break;
@@ -65,6 +75,28 @@ int count_empty_neighbor_groups(int *data, int ncols, int grid_index)
   }
   return nlabels;
 }
+
+int count_empty_neighbor_groups(const int *lookup,
+    const int *data, int ncols, int grid_index)
+{
+  return lookup[get_neighborhood_emptiness_mask(data + grid_index, ncols)];
+}
+
+// The input should have room for 256 entries
+// corresponding to local emptiness patterns.
+void init_empty_neighbor_group_lookup(int *lookup)
+{
+  int mask;
+  for (mask=0; mask<256; ++mask) {
+    lookup[mask] = _count_empty_neighbor_groups_slow(mask);
+  }
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// These functions are related to void region fillability.
+
 
 // This is called within the function that evaluates
 // a void region for fillability.
