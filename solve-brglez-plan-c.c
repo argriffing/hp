@@ -169,6 +169,7 @@ typedef struct tagPLANC_SOLVER_INFO {
   int score_upper_bound;
   GRID *grid;
   int *delta;
+  int *distance_from_origin;
   int *degrees;
   int *degree_histogram;
   int *direction_histogram;
@@ -228,6 +229,20 @@ void compute_potential_bond_csr_graph(PLANC_SOLVER_INFO *info)
 }
 
 
+typedef struct tagSEARCH_OPTION {
+  int direction;
+  int grid_index;
+  int distance_from_origin;
+} SEARCH_OPTION;
+
+int _compare_search_option_pointers(const void *a, const void *b)
+{
+  int da = (*(SEARCH_OPTION **)a)->distance_from_origin;
+  int db = (*(SEARCH_OPTION **)b)->distance_from_origin;
+  return da - db;
+}
+
+
 // Recursive solver.
 // TODO remove the recursion.
 void rsolve(PLANC_SOLVER_INFO *info,
@@ -283,24 +298,48 @@ void rsolve(PLANC_SOLVER_INFO *info,
   info->degree_histogram[nneighbors]++;
   info->degrees[nsteps] = nneighbors;
 
-  // Check the sequence continuation in all directions.
-  for (direction=0; direction<4; ++direction) {
-    if (info->best_score >= info->score_upper_bound) {
-      break;
+  // If we are not finished then attempt to continue exploring the sequence.
+  if (nsteps < info->n - 1 && info->best_score < info->score_upper_bound) {
+
+    // Construct the search options.
+    // Later we will sort the search options so that the points
+    // nearer to the origin are explored first.
+    SEARCH_OPTION search_option_data[4];
+    SEARCH_OPTION *search_options[4];
+    SEARCH_OPTION *p;
+    int nsearch_options = 0;
+    for (i=0; i<4; ++i) {
+      search_options[i] = search_option_data + i;
     }
-    if (nsteps == info->n - 1) break;
 
-    // These conditions avoid exploring redundant conformations.
-    if (info->direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
-    if (info->direction_histogram[UP] == 0 && direction == DOWN) continue;
+    for (direction=0; direction<4; ++direction) {
 
-    // Compute the grid index of the next site in the sequence.
-    // If the grid is empty at that position, then recursively explore.
-    neighbor_index = grid_index + info->delta[direction];
-    if (info->grid->data[neighbor_index] == -1) {
-      info->direction_histogram[direction]++;
-      rsolve(info, nsteps+1, degree_sum, neighbor_index);
-      info->direction_histogram[direction]--;
+      // These conditions avoid exploring redundant conformations.
+      if (info->direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+      if (info->direction_histogram[UP] == 0 && direction == DOWN) continue;
+
+      // If the grid space is empty then add the search option.
+      neighbor_index = grid_index + info->delta[direction];
+      if (info->grid->data[neighbor_index] == GRID_EMPTY) {
+        p = search_options[nsearch_options];
+        p->direction = direction;
+        p->grid_index = neighbor_index;
+        p->distance_from_origin = info->distance_from_origin[p->grid_index];
+        nsearch_options++;
+      }
+    }
+
+    // Sort the search options
+    // according to increasing distance from the origin.
+    qsort(search_options, nsearch_options,
+        sizeof(SEARCH_OPTION *), _compare_search_option_pointers);
+
+    // Explore the search options according to the preferred ordering.
+    for (i=0; i<nsearch_options; ++i) {
+      p = search_options[i];
+      info->direction_histogram[p->direction]++;
+      rsolve(info, nsteps+1, degree_sum, p->grid_index);
+      info->direction_histogram[p->direction]--;
     }
   }
 
@@ -368,6 +407,17 @@ int solve(int n, int k, int verbose,
   delta[UP] = -grid.ncols;
   delta[DOWN] = grid.ncols;
 
+  // Initialize manhattan distance from origin.
+  int distance_from_origin[grid.area];
+  int row, col;
+  for (row=0; row<grid.nrows; ++row) {
+    for (col=0; col<grid.ncols; ++col) {
+      int idx = row*grid.ncols + col;
+      int d = abs(row - grid.origin_row) + abs(col - grid.origin_col);
+      distance_from_origin[idx] = d;
+    }
+  }
+
   // Track the potential bond graph degrees
   // of all vertices in the partial sequence.
   int degrees[n];
@@ -406,6 +456,7 @@ int solve(int n, int k, int verbose,
   info.score_upper_bound = get_score_upper_bound(n, k);
   info.grid = &grid;
   info.delta = delta;
+  info.distance_from_origin = distance_from_origin;
   info.degrees = degrees;
   info.degree_histogram = degree_histogram;
   info.direction_histogram = direction_histogram;
