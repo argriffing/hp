@@ -358,11 +358,87 @@ int test_compactness_2()
   return nfails;
 }
 
+int _help_test_groups(const int *data, int ncols,
+    int grid_index, int expected)
+{
+  printf("help test groups\n");
+  int ngroups = count_empty_neighbor_groups(data, ncols, grid_index);
+  if (ngroups != expected) {
+    printf("Error: expected %d empty neighbor groups but saw %d\n",
+        expected, ngroups);
+    return 1;
+  }
+  return 0;
+}
+
+int test_count_empty_neighbor_groups_0() {
+  int data[] = {
+    -1, -1, -1,
+    -1, -1, -1,
+    -1, -1, -1,
+  };
+  int ncols = 3;
+  int grid_index = 4;
+  return _help_test_groups(data, ncols, grid_index, 1);
+}
+
+int test_count_empty_neighbor_groups_1() {
+  int data[] = {
+    -1, -1, 10,
+    -1, -1, -1,
+    -1, 10, -1,
+  };
+  int ncols = 3;
+  int grid_index = 4;
+  return _help_test_groups(data, ncols, grid_index, 2);
+}
+
+int test_count_empty_neighbor_groups_2() {
+  int data[] = {
+    10, -1, -1,
+    -1, -1, -1,
+    -1, -1, -1,
+  };
+  int ncols = 3;
+  int grid_index = 4;
+  return _help_test_groups(data, ncols, grid_index, 1);
+}
+
+int test_count_empty_neighbor_groups_3() {
+  int data[] = {
+    10, -1, 10,
+    -1, 42, -1,
+    10, -1, 10,
+  };
+  int ncols = 3;
+  int grid_index = 4;
+  return _help_test_groups(data, ncols, grid_index, 4);
+}
+
+int test_count_empty_neighbor_groups_4() {
+  int data[] = {
+    -1, 10, -1,
+    -1, 42, 10,
+    -1, -1, -1,
+  };
+  int ncols = 3;
+  int grid_index = 4;
+  return _help_test_groups(data, ncols, grid_index, 1);
+}
+
 
 int main()
 {
   int nfails = 0;
 
+  printf("testing compact neighbor group counts...\n");
+  nfails += test_count_empty_neighbor_groups_0();
+  nfails += test_count_empty_neighbor_groups_1();
+  nfails += test_count_empty_neighbor_groups_2();
+  nfails += test_count_empty_neighbor_groups_3();
+  nfails += test_count_empty_neighbor_groups_4();
+
+  printf("testing fillability...\n");
   nfails += test_compactness_0();
   nfails += test_compactness_1();
   nfails += test_compactness_2();

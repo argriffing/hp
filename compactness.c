@@ -11,6 +11,61 @@
 #include "compactness.h"
 
 
+// Python uses this modulo function.
+// It treats negative numbers differently.
+int true_modulo(int n, int M)
+{
+  return ((n % M) + M) % M;
+}
+
+// This is a kind of weird function.
+// It is a helper function for enumerating compact self-avoiding walks.
+int count_empty_neighbor_groups(int *data, int ncols, int grid_index)
+{
+  int offsets[] = {
+    1,
+    1-ncols,
+    -ncols,
+    -1-ncols,
+    -1,
+    -1+ncols,
+    ncols,
+    1+ncols,
+  };
+  int labels[] = {
+    -1, -1, -1, -1,
+    -1, -1, -1, -1
+  };
+  // For each cardinal direction,
+  // if the direction is empty and is not already labeled,
+  // label all contiguous empty directions.
+  int nlabels = 0;
+  int d4;
+  for (d4=0; d4<4; ++d4) {
+    int d8 = d4*2;
+    if (labels[d8] == -1 && data[grid_index + offsets[d8]] == GRID_EMPTY) {
+      int label = nlabels++;
+      printf("initializing group d8=%d nlabels=%d\n", d8, nlabels);
+      labels[d8] = label;
+      int di;
+      for (di=-1; di<2; di+=2) {
+        int distance;
+        for (distance=1; distance<8; ++distance) {
+          int i = true_modulo(d8 + distance * di, 8);
+          if (labels[i] == -1 && data[grid_index + offsets[i]] == GRID_EMPTY) {
+            printf("filling d8=%d di=%d distance=%d i=%d\n",
+                d8, di, distance, i);
+            labels[i] = label;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+  }
+  return nlabels;
+}
+
 // This is called within the function that evaluates
 // a void region for fillability.
 void void_init(VOID_INFO *p)
@@ -138,13 +193,13 @@ bool evaluate_void(GRID *grid, const int *delta,
       // If the void region includes the border then the region is not fillable.
       if (void_info->includes_border) {
         printf("not fillable: includes border\n");
-        int row, col;
-        for (row=0; row<grid->nrows; ++row) {
-          for (col=0; col<grid->ncols; ++col) {
-            printf("%3d ", grid_get(grid, row, col));
-          }
-          printf("\n");
-        }
+        //int row, col;
+        //for (row=0; row<grid->nrows; ++row) {
+          //for (col=0; col<grid->ncols; ++col) {
+            //printf("%3d ", grid_get(grid, row, col));
+          //}
+          //printf("\n");
+        //}
         return false;
       }
 
