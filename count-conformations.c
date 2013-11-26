@@ -14,9 +14,8 @@
 #define LEFT 2
 #define DOWN 3
 
-
 int64_t count_continuations(GRID *grid, int *delta,
-    int grid_index, int nsites_remaining)
+    int *direction_histogram, int grid_index, int nsites_remaining)
 {
   // We are guaranteed that the grid is empty at grid_index.
   // Place the site on the grid and decrement the number of
@@ -32,11 +31,17 @@ int64_t count_continuations(GRID *grid, int *delta,
     nwalks = 0;
     int direction;
     for (direction=0; direction<4; ++direction) {
+      // With the following restrictions,
+      // we compute A046171 instead of A001411.
+      if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+      if (direction_histogram[UP] == 0 && direction == DOWN) continue;
+      direction_histogram[direction]++;
       int next_grid_index = grid_index + delta[direction];
       if (grid->data[next_grid_index] == GRID_EMPTY) {
         nwalks += count_continuations(grid, delta,
-            next_grid_index, nsites_remaining);
+            direction_histogram, next_grid_index, nsites_remaining);
       }
+      direction_histogram[direction]--;
     }
   } else {
     nwalks = 1;
@@ -65,8 +70,13 @@ int64_t count_walks(int n)
   // Define the grid index corresponding to the anchor point.
   int grid_index = grid.origin_row * grid.nrows + grid.origin_col;
 
+  // Define a direction histogram which is used for avoiding
+  // walks that are redundant due to symmetry.
+  int direction_histogram[] = {0, 0, 0, 0};
+
   // Count the number of walks.
-  int64_t nwalks = count_continuations(&grid, delta, grid_index, n);
+  int64_t nwalks = count_continuations(&grid, delta,
+      direction_histogram, grid_index, n);
 
   // Destroy the grid.
   grid_destroy(&grid);

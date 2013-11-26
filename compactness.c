@@ -276,3 +276,68 @@ bool evaluate_void(GRID *grid, const int *delta,
       void_info->parity_count[0] == nremaining_parity[0] &&
       void_info->parity_count[1] == nremaining_parity[1]);
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// This function is for compactness detection.
+
+
+// Return 1 if the conformation is compact,
+// otherwise return 0.
+int check_compactness(GRID *grid, const int *delta, int *index_ws)
+{
+  // Find an index corresponding to an empty point in the grid.
+  // This will be a seed for a flood fill.
+  int seed = -1;
+  int i;
+  for (i=0; i<grid->area; ++i) {
+    if (grid->data[i] == GRID_EMPTY) {
+      seed = i;
+      break;
+    }
+  }
+  assert(seed >= 0);
+
+  // Flood fill the empty region with GRID_PROBE values.
+  index_ws[0] = seed;
+  grid->data[seed] = GRID_PROBE;
+  int nnext = 1;
+  while (nnext) {
+    int ncurr = nnext;
+    nnext = 0;
+    for (i=0; i<ncurr; ++i) {
+      int v_idx = index_ws[i];
+      int direction;
+      for (direction=0; direction<4; ++direction) {
+        int w_idx = v_idx + delta[direction];
+        if (grid->data[w_idx] == GRID_EMPTY) {
+          grid->data[w_idx] = GRID_PROBE;
+          index_ws[ncurr + nnext] = w_idx;
+          nnext++;
+        }
+      }
+    }
+    index_ws += ncurr;
+  }
+
+  // Check if any GRID_EMPTY value remains.
+  // If so, then the conformation is not compact.
+  int compactness_flag = 1;
+  for (i=0; i<grid->area; ++i) {
+    if (grid->data[i] == GRID_EMPTY) {
+      compactness_flag = 0;
+    }
+  }
+
+  // Reset all GRID_PROBE values to GRID_EMPTY.
+  for (i=0; i<grid->area; ++i) {
+    if (grid->data[i] == GRID_PROBE) {
+      grid->data[i] = GRID_EMPTY;
+    }
+  }
+
+
+  // Return the compactness flag.
+  return compactness_flag;
+}
+

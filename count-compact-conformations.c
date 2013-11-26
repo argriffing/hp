@@ -17,7 +17,8 @@
 
 
 int64_t count_continuations(GRID *grid, const int *delta,
-    const int *neighbor_lookup, int *index_ws,
+    const int *neighbor_lookup,
+    int *direction_histogram, int *index_ws,
     int grid_index, int nsites_remaining, bool filling)
 {
   // We are guaranteed that the grid is empty at grid_index.
@@ -43,12 +44,17 @@ int64_t count_continuations(GRID *grid, const int *delta,
     // then carry on as usual.
     if (ngroups < 2) {
       for (direction=0; direction<4; ++direction) {
+        if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+        if (direction_histogram[UP] == 0 && direction == DOWN) continue;
+        direction_histogram[direction]++;
         next_grid_index = grid_index + delta[direction];
         if (grid->data[next_grid_index] == GRID_EMPTY) {
           nwalks += count_continuations(grid, delta,
-              neighbor_lookup, index_ws,
+              neighbor_lookup,
+              direction_histogram, index_ws,
               next_grid_index, nsites_remaining, filling);
         }
+        direction_histogram[direction]--;
       }
     }
     
@@ -58,6 +64,9 @@ int64_t count_continuations(GRID *grid, const int *delta,
     // setting the filling state for the remaining continuations.
     if (ngroups == 2 && !filling) {
       for (direction=0; direction<4; ++direction) {
+        if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+        if (direction_histogram[UP] == 0 && direction == DOWN) continue;
+        direction_histogram[direction]++;
         next_grid_index = grid_index + delta[direction];
         if (grid->data[next_grid_index] == GRID_EMPTY) {
           VOID_INFO void_info;
@@ -67,10 +76,12 @@ int64_t count_continuations(GRID *grid, const int *delta,
           clear_grid_probes(grid, index_ws, void_info.nprobed);
           if (next_fillable) {
             nwalks += count_continuations(grid, delta,
-                neighbor_lookup, index_ws,
+                neighbor_lookup,
+                direction_histogram, index_ws,
                 next_grid_index, nsites_remaining, next_fillable);
           }
         }
+        direction_histogram[direction]--;
       }
     }
     
@@ -124,9 +135,12 @@ int64_t count_walks(int n)
   int neighborhood_lookup[256];
   init_empty_neighbor_group_lookup(neighborhood_lookup);
 
+  int direction_histogram[] = {0, 0, 0, 0};
+
   // Count the number of walks.
   int64_t nwalks = count_continuations(&grid, delta,
-      neighborhood_lookup, index_ws,
+      neighborhood_lookup,
+      direction_histogram, index_ws,
       grid_index, n, filling);
 
   // Destroy the grid.
@@ -137,66 +151,8 @@ int64_t count_walks(int n)
 }
 
 
-// Return 1 if the conformation is compact,
-// otherwise return 0.
-int check_compactness(GRID *grid, const int *delta, int *index_ws)
-{
-  // Find an index corresponding to an empty point in the grid.
-  // This will be a seed for a flood fill.
-  int seed = -1;
-  int i;
-  for (i=0; i<grid->area; ++i) {
-    if (grid->data[i] == GRID_EMPTY) {
-      seed = i;
-      break;
-    }
-  }
-  assert(seed >= 0);
-
-  // Flood fill the empty region with GRID_PROBE values.
-  index_ws[0] = seed;
-  grid->data[seed] = GRID_PROBE;
-  int nnext = 1;
-  while (nnext) {
-    int ncurr = nnext;
-    nnext = 0;
-    for (i=0; i<ncurr; ++i) {
-      int v_idx = index_ws[i];
-      int direction;
-      for (direction=0; direction<4; ++direction) {
-        int w_idx = v_idx + delta[direction];
-        if (grid->data[w_idx] == GRID_EMPTY) {
-          grid->data[w_idx] = GRID_PROBE;
-          index_ws[ncurr + nnext] = w_idx;
-          nnext++;
-        }
-      }
-    }
-    index_ws += ncurr;
-  }
-
-  // Check if any GRID_EMPTY value remains.
-  // If so, then the conformation is not compact.
-  int compactness_flag = 1;
-  for (i=0; i<grid->area; ++i) {
-    if (grid->data[i] == GRID_EMPTY) {
-      compactness_flag = 0;
-    }
-  }
-
-  // Reset all GRID_PROBE values to GRID_EMPTY.
-  for (i=0; i<grid->area; ++i) {
-    if (grid->data[i] == GRID_PROBE) {
-      grid->data[i] = GRID_EMPTY;
-    }
-  }
-
-
-  // Return the compactness flag.
-  return compactness_flag;
-}
-
-int64_t count_continuations_brute(GRID *grid, int *delta, int *index_ws,
+int64_t count_continuations_brute(GRID *grid, int *delta,
+    int *direction_histogram, int *index_ws,
     int grid_index, int nsites_remaining)
 {
   // We are guaranteed that the grid is empty at grid_index.
@@ -213,11 +169,16 @@ int64_t count_continuations_brute(GRID *grid, int *delta, int *index_ws,
     nwalks = 0;
     int direction;
     for (direction=0; direction<4; ++direction) {
+      if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+      if (direction_histogram[UP] == 0 && direction == DOWN) continue;
+      direction_histogram[direction]++;
       int next_grid_index = grid_index + delta[direction];
       if (grid->data[next_grid_index] == GRID_EMPTY) {
-        nwalks += count_continuations_brute(grid, delta, index_ws,
+        nwalks += count_continuations_brute(grid, delta,
+            direction_histogram, index_ws,
             next_grid_index, nsites_remaining);
       }
+      direction_histogram[direction]--;
     }
   } else {
 
@@ -255,9 +216,11 @@ int64_t count_walks_brute(int n)
   // Index workspace for checking compactness;
   int index_ws[grid.area];
 
+  int direction_histogram[] = {0, 0, 0, 0};
+
   // Count the number of walks.
-  int64_t nwalks = count_continuations_brute(
-      &grid, delta, index_ws, grid_index, n);
+  int64_t nwalks = count_continuations_brute(&grid, delta, 
+      direction_histogram, index_ws, grid_index, n);
 
   // Destroy the grid.
   grid_destroy(&grid);

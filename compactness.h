@@ -43,5 +43,7 @@ bool evaluate_void(GRID *grid, const int *delta,
     int query_index, int void_index, int nremaining
     );
 
+int check_compactness(GRID *grid, const int *delta, int *index_ws);
+
 #endif
 
