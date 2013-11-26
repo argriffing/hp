@@ -63,6 +63,7 @@ int _compactness_test_helper(GRID *grid, const int *original_grid,
 
 int test_compactness_0()
 {
+  printf("test 0\n");
 
   // Initialize the test grid.
   int nrows = 7;
@@ -159,12 +160,212 @@ int test_compactness_0()
 }
 
 
+int test_compactness_1()
+{
+  printf("test 1\n");
+
+  // Initialize the test grid.
+  int nrows = 7;
+  int ncols = 7;
+  int area = nrows * ncols;
+  int original_grid[] = {
+    -5, -5, -5, -5, -5, -5, -5,
+    -5, -1, 10, 10, 10, 10, -5,
+    -5, 10, 10, -1, -1, 10, -5,
+    -5, 10, -1, -1, -1, 10, -5,
+    -5, 10, -1, -1, 10, 10, -5,
+    -5, 10, 20, 30, 10, -1, -5,
+    -5, -5, -5, -5, -5, -5, -5,
+  };
+
+  // Initialize the grid structure.
+  GRID grid;
+  grid_init(&grid, 2);
+
+  // Compare the dimensions to the test grid.
+  assert(grid.nrows == nrows);
+  assert(grid.ncols == ncols);
+  assert(grid.area == area);
+
+  // Copy the test grid data into the grid structure.
+  memcpy(grid.data, original_grid, sizeof original_grid);
+
+  // Run some tests.
+  int nfails = 0;
+
+  // Declare variables.
+  int query_row;
+  int query_col;
+  int void_row;
+  int void_col;
+  int query_index;
+  int void_index;
+  int nremaining;
+  int expected_fillability;
+
+  // Setup for vertex 20 stepping upwards.
+  query_row = 5;
+  query_col = 2;
+  void_row = 4;
+  void_col = 2;
+  query_index = query_row*ncols + query_col;
+  void_index = void_row*ncols + void_col;
+
+  // This step should not work regardless of the number of vertices remaining,
+  // because the parity is wrong.
+  nremaining = 6;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 7;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 8;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+
+  // Setup for vertex 30 stepping in the up direction.
+  query_row = 5;
+  query_col = 3;
+  void_row = 4;
+  void_col = 3;
+  query_index = query_row*ncols + query_col;
+  void_index = void_row*ncols + void_col;
+
+  // This step works when the number of remaining vertices is correct.
+  nremaining = 6;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 7;
+  expected_fillability = true;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 8;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+
+  // Destroy the grid.
+  grid_destroy(&grid);
+
+  return nfails;
+}
+
+
+int test_compactness_2()
+{
+  printf("test 2\n");
+  printf("neither starting point is blocked by parity\n");
+  printf("but both are blocked by an excess of degree-1 vertices\n");
+
+  // Initialize the test grid.
+  int nrows = 7;
+  int ncols = 7;
+  int area = nrows * ncols;
+  int original_grid[] = {
+    -5, -5, -5, -5, -5, -5, -5,
+    -5, -1, 10, 10, 10, -1, -5,
+    -5, 10, 10, -1, 10, -1, -5,
+    -5, 10, -1, -1, 10, 10, -5,
+    -5, 10, -1, -1, -1, 10, -5,
+    -5, 10, 20, 30, 10, 10, -5,
+    -5, -5, -5, -5, -5, -5, -5,
+  };
+
+  // Initialize the grid structure.
+  GRID grid;
+  grid_init(&grid, 2);
+
+  // Compare the dimensions to the test grid.
+  assert(grid.nrows == nrows);
+  assert(grid.ncols == ncols);
+  assert(grid.area == area);
+
+  // Copy the test grid data into the grid structure.
+  memcpy(grid.data, original_grid, sizeof original_grid);
+
+  // Run some tests.
+  int nfails = 0;
+
+  // Declare variables.
+  int query_row;
+  int query_col;
+  int void_row;
+  int void_col;
+  int query_index;
+  int void_index;
+  int nremaining;
+  int expected_fillability;
+
+  // Setup for vertex 20 stepping upwards.
+  query_row = 5;
+  query_col = 2;
+  void_row = 4;
+  void_col = 2;
+  query_index = query_row*ncols + query_col;
+  void_index = void_row*ncols + void_col;
+
+  // Blocked by too many degree-1 vertices.
+  nremaining = 6;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 7;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 8;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+
+  // Setup for vertex 30 stepping in the up direction.
+  query_row = 5;
+  query_col = 3;
+  void_row = 4;
+  void_col = 3;
+  query_index = query_row*ncols + query_col;
+  void_index = void_row*ncols + void_col;
+
+  // Blocked by too many degree-1 vertices.
+  nremaining = 6;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 7;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+  //
+  nremaining = 8;
+  expected_fillability = false;
+  nfails += _compactness_test_helper(&grid, original_grid,
+      query_index, void_index, nremaining, expected_fillability);
+
+  // Destroy the grid.
+  grid_destroy(&grid);
+
+  return nfails;
+}
+
 
 int main()
 {
   int nfails = 0;
 
   nfails += test_compactness_0();
+  nfails += test_compactness_1();
+  nfails += test_compactness_2();
 
   if (nfails) {
     printf("failed testing: %d tests failed\n", nfails);
