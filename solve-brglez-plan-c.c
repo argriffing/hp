@@ -371,6 +371,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
       p->direction = direction;
       p->grid_index = next_grid_index;
       p->filling = next_filling;
+      p->d = info->distance_from_origin[p->grid_index];
     }
 
 
