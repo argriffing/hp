@@ -16,6 +16,17 @@
 #define DOWN 3
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Enumeration of compact self avoiding walks,
+// implemented in a way that tries to be a little bit clever.
+
+
+typedef struct tagSEARCH_OPTION {
+  int direction;
+  int grid_index;
+  bool filling;
+} SEARCH_OPTION;
+
 int64_t count_continuations(GRID *grid, const int *delta,
     const int *neighbor_lookup,
     int *direction_histogram, int *index_ws,
@@ -31,71 +42,80 @@ int64_t count_continuations(GRID *grid, const int *delta,
   // If we have placed all of the sites then we are finished
   // with this continuation.
   int64_t nwalks = 0;
-  int direction;
-  int next_grid_index;
 
   // Check the number of neighboring empty groups.
   int ngroups = count_empty_neighbor_groups(neighbor_lookup,
       grid->data, grid->ncols, grid_index);
 
-  if (nsites_remaining) {
+  // Declare the search options for continuing the sequence.
+  // The extra indirection is for possible sorting of the options,
+  // not used here.
+  SEARCH_OPTION search_option_data[4];
+  SEARCH_OPTION *search_options[4];
+  SEARCH_OPTION *p;
+  int nsearch_options = 0;
+  int i;
+  for (i=0; i<4; ++i) {
+    search_options[i] = search_option_data + i;
+  }
 
-    // If the number of neighboring empty groups is less than two
-    // then carry on as usual.
-    if (ngroups < 2) {
-      for (direction=0; direction<4; ++direction) {
-        if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
-        if (direction_histogram[UP] == 0 && direction == DOWN) continue;
-        direction_histogram[direction]++;
-        next_grid_index = grid_index + delta[direction];
-        if (grid->data[next_grid_index] == GRID_EMPTY) {
-          nwalks += count_continuations(grid, delta,
-              neighbor_lookup,
-              direction_histogram, index_ws,
-              next_grid_index, nsites_remaining, filling);
-        }
-        direction_histogram[direction]--;
-      }
-    }
-    
-    // If the number of groups is equal to two
-    // and we are not current filling,
-    // then explore only the fillable directions if any,
-    // setting the filling state for the remaining continuations.
+  // Build the array of approved search options.
+  int direction;
+  for (direction=0; direction<4; ++direction) {
+    if (!nsites_remaining) break;
+    if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
+    if (direction_histogram[UP] == 0 && direction == DOWN) continue;
+    if (ngroups >= 3) continue;
+    if (filling && ngroups > 1) continue;
+
+    // If the neighboring point is not empty then continue.
+    int next_grid_index = grid_index + delta[direction];
+    int neighbor = grid->data[next_grid_index];
+    if (neighbor != GRID_EMPTY) continue;
+
+    // Check whether the proposed move begins filling a void region.
+    // If the void is not fillable then continue.
+    bool next_filling = filling;
     if (ngroups == 2 && !filling) {
-      for (direction=0; direction<4; ++direction) {
-        if (direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
-        if (direction_histogram[UP] == 0 && direction == DOWN) continue;
-        direction_histogram[direction]++;
-        next_grid_index = grid_index + delta[direction];
-        if (grid->data[next_grid_index] == GRID_EMPTY) {
-          bool next_fillable = evaluate_void(
-              grid, delta, index_ws,
-              grid_index, next_grid_index, nsites_remaining);
-          if (next_fillable) {
-            nwalks += count_continuations(grid, delta,
-                neighbor_lookup,
-                direction_histogram, index_ws,
-                next_grid_index, nsites_remaining, next_fillable);
-          }
-        }
-        direction_histogram[direction]--;
+      if (evaluate_void(grid, delta, index_ws,
+          grid_index, next_grid_index, nsites_remaining))
+      {
+        next_filling = true;
+      } else {
+        continue;
       }
     }
-    
-    // If the number of groups is equal to two and we are filling,
-    // or if the number of groups is greater than two,
-    // then we do not explore that direction.
-  } else {
+
+    // The search option has passed some rigorous screening by this point.
+    p = search_options[nsearch_options++];
+    p->direction = direction;
+    p->grid_index = next_grid_index;
+    p->filling = next_filling;
+  }
+
+  // Continue exploring the approved search directions if any.
+  for (i=0; i<nsearch_options; ++i) {
+    p = search_options[i];
+    direction_histogram[p->direction]++;
+    nwalks += count_continuations(grid, delta,
+        neighbor_lookup,
+        direction_histogram, index_ws,
+        p->grid_index, nsites_remaining, p->filling);
+    direction_histogram[p->direction]--;
+  }
+
+  // If no sites remain, then count the completed walk
+  // unless it introduces a void.
+  if (!nsites_remaining) {
     if (ngroups > 1) {
       nwalks = 0;
     } else {
       // debug
-      //if (!check_compactness(grid, delta, index_ws)) {
-        //printf("erroneously completed a non-compact walk\n");
-        //print_grid(grid);
-        //assert(0);
-      //}
+      if (!check_compactness(grid, delta, index_ws)) {
+        printf("erroneously completed a non-compact walk\n");
+        print_grid(grid);
+        assert(0);
+      }
       nwalks = 1;
     }
   }
@@ -106,6 +126,7 @@ int64_t count_continuations(GRID *grid, const int *delta,
   // return the number of completed continuations.
   return nwalks;
 }
+
 
 int64_t count_walks(int n)
 {
@@ -147,6 +168,10 @@ int64_t count_walks(int n)
   // Return the number of walks.
   return nwalks;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Brute force enumeration of compact self avoiding walks.
 
 
 int64_t count_continuations_brute(GRID *grid, int *delta,
@@ -228,13 +253,17 @@ int64_t count_walks_brute(int n)
 }
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Main function.
+
+
 int main()
 {
   int n=1;
   while (true)
   {
-    int64_t nwalks = count_walks(n);
-    //int64_t nwalks = count_walks_brute(n);
+    //int64_t nwalks = count_walks(n);
+    int64_t nwalks = count_walks_brute(n);
     printf("n %d\n", n);
     printf("walks %" PRId64 "\n", nwalks);
     printf("\n");
