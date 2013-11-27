@@ -29,9 +29,9 @@ oeis sequences
 The sequence of counts of rooted self avoiding walks is
 [A001411](https://oeis.org/A001411)
 and related sequences can be found by searching for
-[references](https://oeis.org/search?q=A001411).
+[references](https://oeis.org/search?q=A001411)
 to this sequence in the database.
-The sequence
+For example the sequence
 [A046171](https://oeis.org/A046171)
 counts rooted self avoiding walks in a way that removes
 much of the redundancy caused by symmetry.
@@ -49,3 +49,6 @@ compactness is defined as follows.
 Suppose that the number of amino acids in a protein sequence is n
 and the number of lattice points is m.
 If m=n, the conformation of the sequence in the lattice is defined as compact.
+
+In this github repo I define compactness of a connected set of square lattice
+points to mean that there are no holes.
