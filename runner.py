@@ -10,7 +10,7 @@ import itertools
 import subprocess
 
 def main():
-    filename = 'nksolutions.out'
+    filename = 'nksolutions-compact.out'
     with open(filename, 'a') as fout:
         for k in itertools.count(8):
             for n in itertools.count(k):

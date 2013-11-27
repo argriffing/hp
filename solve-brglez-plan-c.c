@@ -174,6 +174,7 @@ typedef struct tagPLANC_SOLVER_INFO {
   int *degree_histogram;
   int *direction_histogram;
   int *binary_solution_ws;
+  int *index_ws;
   int *row_ptr;
   int *col_ind;
 } PLANC_SOLVER_INFO;
@@ -232,6 +233,7 @@ void compute_potential_bond_csr_graph(PLANC_SOLVER_INFO *info)
 typedef struct tagSEARCH_OPTION {
   int direction;
   int grid_index;
+  int filling;
   int d;
 } SEARCH_OPTION;
 
@@ -256,7 +258,8 @@ int _compare_search_option_pointers(const void *a, const void *b)
 // Recursive solver.
 // TODO remove the recursion.
 void rsolve(PLANC_SOLVER_INFO *info,
-    int nsteps, int degree_sum, int grid_index)
+    const int *neighbor_lookup,
+    int nsteps, int degree_sum, int grid_index, int filling)
 {
   int v;
   int direction, i;
@@ -266,6 +269,10 @@ void rsolve(PLANC_SOLVER_INFO *info,
   // Summarize the progress.
   int nsites_curr = nsteps + 1;
   int nsites_remaining = info->n - nsites_curr;
+
+  // Check the number of neighboring empty groups.
+  int ngroups = count_empty_neighbor_groups(neighbor_lookup,
+      info->grid->data, info->grid->ncols, grid_index);
 
   // Make a list of neighbors that are not adjacent along the primary sequence.
   int neighbors[3];
@@ -322,22 +329,50 @@ void rsolve(PLANC_SOLVER_INFO *info,
       search_options[i] = search_option_data + i;
     }
 
+    // Build the array of approved search options.
     for (direction=0; direction<4; ++direction) {
 
-      // These conditions avoid exploring redundant conformations.
+      // Do not continue exploring if the sequence is complete.
+      if (!nsites_remaining) break;
+
+      // Never explore downstream of a 3-way branching site.
+      if (ngroups >= 3) continue;
+
+      // If we are already filling
+      // then do not explore downstream of a 2-way branching site.
+      if (filling && ngroups > 1) continue;
+
+      // Do not continue exploring if the conformation
+      // would be equivalent by symmetry to a canonical representative
+      // of the set of symmetrically equivalent conformations.
       if (info->direction_histogram[RIGHT] == 0 && direction != RIGHT) continue;
       if (info->direction_histogram[UP] == 0 && direction == DOWN) continue;
 
-      // If the grid space is empty then add the search option.
-      neighbor_index = grid_index + info->delta[direction];
-      if (info->grid->data[neighbor_index] == GRID_EMPTY) {
-        p = search_options[nsearch_options];
-        p->direction = direction;
-        p->grid_index = neighbor_index;
-        p->d = info->distance_from_origin[p->grid_index];
-        nsearch_options++;
+      // If the neighboring point is not empty then continue.
+      int next_grid_index = grid_index + info->delta[direction];
+      int neighbor = info->grid->data[next_grid_index];
+      if (neighbor != GRID_EMPTY) continue;
+
+      // Check whether the proposed move begins filling a void region.
+      // If the void is not fillable then continue.
+      bool next_filling = filling;
+      if (ngroups == 2 && !filling) {
+        if (evaluate_void(info->grid, info->delta, info->index_ws,
+            grid_index, next_grid_index, nsites_remaining))
+        {
+          next_filling = true;
+        } else {
+          continue;
+        }
       }
+
+      // The search option has passed some rigorous screening by this point.
+      p = search_options[nsearch_options++];
+      p->direction = direction;
+      p->grid_index = next_grid_index;
+      p->filling = next_filling;
     }
+
 
     // Sort the search options
     // according to increasing distance from the origin.
@@ -351,14 +386,13 @@ void rsolve(PLANC_SOLVER_INFO *info,
     if (nsearch_options > 3) {
       assert(0);
     }
-    //qsort(search_options, nsearch_options,
-        //sizeof(SEARCH_OPTION *), _compare_search_option_pointers);
 
     // Explore the search options according to the preferred ordering.
     for (i=0; i<nsearch_options; ++i) {
       p = search_options[i];
       info->direction_histogram[p->direction]++;
-      rsolve(info, nsteps+1, degree_sum, p->grid_index);
+      rsolve(info, neighbor_lookup,
+          nsteps+1, degree_sum, p->grid_index, p->filling);
       info->direction_histogram[p->direction]--;
     }
   }
@@ -369,7 +403,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
   // then fully evaluate the score of the complete sequence.
   // If the fully evaluated score is better than the best score,
   // then update the search summary.
-  if (nsteps == info->n - 1) {
+  if (nsteps == info->n - 1 && ngroups < 2) {
 
     // Compute an upper bound.
     int degree_hist_score_bound = get_degree_hist_score_bound(
@@ -393,8 +427,7 @@ void rsolve(PLANC_SOLVER_INFO *info,
         fill_conformation_string(info->conformation_string,
             info->grid, info->delta, info->n);
       }
-
-    } // end degree hist upper bound check
+    }
   }
 
   // Roll back.
@@ -454,6 +487,16 @@ int solve(int n, int k, int verbose,
   int binary_solution_ws[n];
   memset(binary_solution_ws, -1, sizeof binary_solution_ws);
 
+  // Index workspace for checking fillability of void regions.
+  int index_ws[grid.area];
+
+  // This flag is true if we have begun filling a void region.
+  bool filling = false;
+
+  // Initialize neighborhood lookup.
+  int neighborhood_lookup[256];
+  init_empty_neighbor_group_lookup(neighborhood_lookup);
+
   // Initialize csr graph workspaces.
   // The row_ptr should have one more space than the number of vertices.
   // The col_ind should have room for twice the max possible
@@ -481,11 +524,12 @@ int solve(int n, int k, int verbose,
   info.degree_histogram = degree_histogram;
   info.direction_histogram = direction_histogram;
   info.binary_solution_ws = binary_solution_ws;
+  info.index_ws = index_ws;
   info.row_ptr = row_ptr;
   info.col_ind = col_ind;
 
   // Solve the problem recursively.
-  rsolve(&info, nsteps, degree_sum, grid_index);
+  rsolve(&info, neighborhood_lookup, nsteps, degree_sum, grid_index, filling);
 
   grid_destroy(&grid);
   return info.best_score;
