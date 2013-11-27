@@ -22,3 +22,30 @@ $ python hp-subset-sum.py 267 493 869 961 1000 1153 1246 1598 1766 1922 > puzzle
 $ ./solve-brglez-plan-b 23368 < puzzle.out | head -n 1
 23368
 ```
+
+oeis sequences
+--------------
+
+The sequence of counts of rooted self avoiding walks is
+[A001411](https://oeis.org/A001411)
+and related sequences can be found by searching for
+[references](https://oeis.org/search?q=A001411).
+to this sequence in the database.
+The sequence
+[A046171](https://oeis.org/A046171)
+counts rooted self avoiding walks in a way that removes
+much of the redundancy caused by symmetry.
+
+
+notes on various definitions of compactness
+-------------------------------------------
+
+In
+Predicting the non-compact conformation of amino acid sequence by
+particle swarm optimization
+by Yuzhen Guo and Yong Wang (2013)
+doi 10.1109/ISB.2013.6623805
+compactness is defined as follows.
+Suppose that the number of amino acids in a protein sequence is n
+and the number of lattice points is m.
+If m=n, the conformation of the sequence in the lattice is defined as compact.
