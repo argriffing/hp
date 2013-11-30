@@ -4,10 +4,25 @@ Construct a 2d hp puzzle that encodes a subset sum problem.
 """
 from __future__ import division, print_function, absolute_import
 
+import itertools
+import argparse
 import sys
 
 
-def main(sizes):
+def rep(s, n, compress):
+    if not compress:
+        return s * n
+    elif n == 0:
+        return ''
+    elif n == 1:
+        return s
+    elif len(s) == 1:
+        return s + str(n)
+    else:
+        return '(' + s + ')' + str(n)
+
+
+def gen_teeth(sizes, compress):
 
     # define the comb dimensions
     nsizes = len(sizes)
@@ -21,11 +36,9 @@ def main(sizes):
     assert tooth_lengths[0] == nsizes
     assert tooth_terminals[-1] > 0
 
-    # begin constructing the legs of the walk
-    walk = []
-
-    # add each tooth
     for i in range(nteeth):
+
+        tooth = []
 
         # get the tooth dimensions
         ncols = tooth_lengths[i]
@@ -37,24 +50,38 @@ def main(sizes):
         # The top of the subsequent teeth are flat.
         ncorr = ncols if pfirst else 0
         nflat = ncols - ncorr
-        top = 'rurdr' * ncorr + 'rrr' * nflat
+        top = rep('rurdr', ncorr, compress) + rep('r', 3*nflat, compress)
 
         # The bottom of some teeth may have some corrugations.
         ncorr = nterms
         nflat = ncols - nterms
-        bot = 'ldlul' * ncorr + 'lll' * nflat
+        bot = rep('ldlul', ncorr, compress) + rep('l', 3*nflat, compress)
 
         # Add the leg of the walk corresponding to the tooth.
-        walk.append(top + 'd' + bot)
+        tooth.append(top + 'd' + bot)
 
         # Add the connection to the next tooth.
         if not plast:
-            walk.append('d')
+            tooth.append('d')
+        
+        yield ''.join(tooth)
 
-    return ''.join(walk)
+
+
+def main(sizes, compress):
+    comb = []
+    for k, g in itertools.groupby(gen_teeth(sizes, compress)):
+        n = sum(1 for tooth in g)
+        comb.append(rep(k, n, compress))
+    return ''.join(comb)
 
 
 if __name__ == '__main__':
-    sizes = sorted(int(x) for x in sys.argv[1:])
-    walk_string = main(sizes)
-    print(walk_string)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--compress', action='store_true',
+            help='use a compressed representation of the walk')
+    parser.add_argument('sizes', nargs='*')
+    args = parser.parse_args()
+    sizes = sorted(int(x) for x in args.sizes)
+    print(main(sizes, args.compress))
+

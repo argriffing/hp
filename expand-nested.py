@@ -25,8 +25,7 @@ def process_term(tokens):
 def process_formula(tokens):
     return ''.join(tokens)
 
-def main(args):
-    s = ''.join(sys.stdin.read().split())
+def main(s):
     lpar = Literal('(').suppress()
     rpar = Literal(')').suppress()
     integer = Word(nums)
@@ -38,30 +37,45 @@ def main(args):
     integer.setParseAction(process_integer)
     term.setParseAction(process_term)
     formula.setParseAction(process_formula)
-    hp = formula.parseString(s)[0].lower()
-    if not (set(hp) <= set('hp')):
-        raise Exception('expected an encoded HP string')
-    return hp
+    return formula.parseString(s)[0]
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--out-format', choices=('HP', 'hp', '10'),
+    parser.add_argument('--in-format',
+            choices=('generic', 'hp'),
+            default='generic',
+            help='sequence input format')
+    parser.add_argument('--out-format',
+            choices=('same', 'none', 'upper', 'lower', '10'),
+            default='same',
             help='sequence output format')
     parser.add_argument('-n', action='store_true',
             help='report sequence length n')
     parser.add_argument('-k', action='store_true',
             help='report sequence weight k')
     args = parser.parse_args()
-    hp = main(args)
+    s = main(''.join(sys.stdin.read().split()))
+    if args.in_format == 'hp':
+        if not (set(s.lower()) <= set('hp')):
+            raise Exception('expected an encoded hp string')
     if args.n:
-        print 'n', len(hp)
+        print 'n', len(s)
     if args.k:
-        print 'k', hp.count('h')
-    if args.out_format == 'HP':
-        print hp.upper()
-    elif args.out_format == 'hp':
-        print hp
+        if args.in_format != 'hp':
+            raise Exception('k flag is only allowed for hp input format')
+        print 'k', s.lower.count('h')
+    out = None
+    if args.out_format == 'same':
+        out = s
+    elif args.out_format == 'upper':
+        out = s.upper()
+    elif args.out_format == 'lower':
+        out = s.lower()
     elif args.out_format == '10':
+        if args.in_format != 'hp':
+            raise Exception('the 10 output format is only compatible '
+                    'with the hp input format')
         hp10 = {'h':'1', 'p':'0'}
-        print 'sequence', ''.join(hp10[x] for x in hp)
-
+        out = ''.join(hp10[x] for x in s.lower())
+    if out is not None:
+        print 'sequence', out
