@@ -100,7 +100,7 @@ def write_json(fin, fout):
 
 def main():
     json_filename = 'sol.json'
-    solutions_filename = 'nksolutions.out'
+    solutions_filename = 'nksolutions-compact.out'
     with open(solutions_filename) as fin:
         with open(json_filename, 'w') as fout:
             write_json(fin, fout)
