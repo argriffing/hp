@@ -49,6 +49,8 @@ if __name__ == '__main__':
             choices=('same', 'none', 'upper', 'lower', '10'),
             default='same',
             help='sequence output format')
+    parser.add_argument('--noheader', action='store_true',
+            help='suppress the output headers')
     parser.add_argument('-n', action='store_true',
             help='report sequence length n')
     parser.add_argument('-k', action='store_true',
@@ -59,11 +61,15 @@ if __name__ == '__main__':
         if not (set(s.lower()) <= set('hp')):
             raise Exception('expected an encoded hp string')
     if args.n:
-        print 'n', len(s)
+        if not args.noheader:
+            print 'n',
+        print len(s)
     if args.k:
         if args.in_format != 'hp':
             raise Exception('k flag is only allowed for hp input format')
-        print 'k', s.lower.count('h')
+        if not args.noheader:
+            print 'k',
+        print s.lower.count('h')
     out = None
     if args.out_format == 'same':
         out = s
@@ -78,4 +84,6 @@ if __name__ == '__main__':
         hp10 = {'h':'1', 'p':'0'}
         out = ''.join(hp10[x] for x in s.lower())
     if out is not None:
-        print 'sequence', out
+        if not args.noheader:
+            print 'sequence',
+        print out
