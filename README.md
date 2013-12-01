@@ -123,6 +123,10 @@ hp hpphpphpphphphpphpphpph
 This [visualization](http://bl.ocks.org/argriffing/7619198)
 shows optimal "Plan C" solutions for given sequence lengths n
 and sequence weights k.
+Except for the last row,
+each row can be extended arbitrarily towards the right
+by just increasing the lengths of polar loops
+to construct optimal solutions that meet the parity upper bound.
 
 
 oeis sequences
