@@ -120,6 +120,10 @@ conformation rululdldrdrrdrdldlulur
 hp hpphpphpphphphpphpphpph
 ```
 
+This [visualization](http://bl.ocks.org/argriffing/7619198)
+shows optimal "Plan C" solutions for given sequence lengths n
+and sequence weights k.
+
 
 oeis sequences
 --------------
