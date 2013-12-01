@@ -69,7 +69,7 @@ if __name__ == '__main__':
             raise Exception('k flag is only allowed for hp input format')
         if not args.noheader:
             print 'k',
-        print s.lower.count('h')
+        print s.lower().count('h')
     out = None
     if args.out_format == 'same':
         out = s

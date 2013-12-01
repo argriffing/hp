@@ -48,6 +48,21 @@ $ diff -s puzzle.out puzzle.decompressed
 Files puzzle.out and puzzle.decompressed are identical
 ```
 
+The decompression script can also be used for hp strings.
+
+```
+$ echo "(HP)2PH2PHP2HPH2P2HPH" | python expand-nested.py \
+-nk --in-format=hp --out-format=10
+n 20
+k 10
+sequence 10100110100101100101
+$ echo "HPHPHHHHHHPHPPHHPPHHPHHHHPPHHHHPPHPHHPPPPPHHH" | \
+python expand-nested.py -nk --in-format=hp --out-format=10
+n 45
+k 27
+sequence 101011111101001100110111100111100101100000111
+```
+
 
 oeis sequences
 --------------
