@@ -1,3 +1,32 @@
+Introduction
+------------
+
+This pile of code does things related to some variants of the 2d
+[hp](http://en.wikipedia.org/wiki/Hydrophobic-polar_protein_folding_model)
+protein folding model.
+The variants are described [here](http://arxiv.org/abs/1309.7508).
+
+"Plan A" variant
+----------------
+
+This is the traditional 2d hp protein folding puzzle.
+Given a specific sequence of hydrophobic and polar residues,
+find the 2d lattice conformation that maximizes the number of
+adjacent hydrophobic residue pairs.
+This problem has been proved to be NP hard.
+
+
+"Plan B" variant
+----------------
+
+In this variant the conformation of the sequence of length n is fixed,
+and the puzzle is to find the best positions of k hydrophobic sites
+to again maximize the number of adjacent hydrophobic residue pairs.
+Residues that are next to each other along the primary sequence
+do not count towards this objective.
+
+Some of the code in this pile efficiently solves this variant.
+
 ```
 $ gcc -o solve-brglez-plan-b solve-brglez-plan-b.c sparsetools.c subsetsum.c \
 graphgirth.c connectedcomponents.c breadthfirst.c bondsubgraph.c
@@ -61,6 +90,34 @@ python expand-nested.py -nk --in-format=hp --out-format=10
 n 45
 k 27
 sequence 101011111101001100110111100111100101100000111
+```
+
+"Plan C" variant
+--------------
+
+In this variant the goal is still to maximize the number of
+adjacent hydrophobic pairs, again not counting pairs that are next to each
+other along the primary sequence, but we are allowed to choose
+both the conformation of the sequence of length n
+and also the positions of the k hydrophobic residues along the sequence.
+
+The pile of code includes an inefficient solver for small n and k.
+When n and k are both large (maybe `8 < n`)
+and `k << n` (maybe `k < c*sqrt(n)` for some c)
+it should be easy to efficiently construct a conformation and sequence
+that meets a parity upper bound, but these constructions
+are not implemented here.
+
+```
+$ gcc -o solve-brglez-plan-c solve-brglez-plan-c.c sparsetools.c subsetsum.c \
+graphgirth.c connectedcomponents.c breadthfirst.c bondsubgraph.c plancgrid.c \
+compactness.c
+$ ./solve-brglez-plan-c -n 23 -k 9
+n 23
+k 9
+score 10
+conformation rululdldrdrrdrdldlulur
+hp hpphpphpphphphpphpphpph
 ```
 
 
