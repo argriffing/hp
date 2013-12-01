@@ -23,6 +23,14 @@ $ ./solve-brglez-plan-b 23368 < puzzle.out | head -n 1
 23368
 ```
 
+Compressed output
+
+```
+$ python hp-subset-sum.py 267 493 869 961 1000 1153 1246 1598 1766 1922 --compress
+(rurdr)10dl30d(r30dl30d)265r30dldlull27d(r27dl27d)225r27dldlull24d(r24dl24d)375r24dldlull21d(r21dl21d)91r21dldlull18d(r18dl18d)38r18dldlull15d(r15dl15d)152r15dldlull12d(r12dl12d)92r12dldlull9d(r9dl9d)351r9dldlull6d(r6dl6d)167r6dldlull3d(r3dl3d)155r3dldlul
+```
+
+
 oeis sequences
 --------------
 
