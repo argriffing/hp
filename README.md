@@ -107,7 +107,7 @@ The "Plan C" difficulty may depend on n and k.
 Intuitively, the idea is that we want to wrap a 2d core of k
 hydrophobic residues using a perimeter of n-k polar residues.
 Using an analogy, "Plan C" is like gift-wrapping a present
-of a given volume k using wrapping paper with surface area sqrt(n-k)
+of a given volume k using wrapping paper with surface area n-k
 in a way that exposes as little of the gift as possible.
 When the amount of wrapping paper is very small,
 then the problem is easy because you can just tape the scrap of paper
