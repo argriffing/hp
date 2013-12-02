@@ -102,11 +102,49 @@ both the conformation of the sequence of length n
 and also the positions of the k hydrophobic residues along the sequence.
 
 The pile of code includes an inefficient solver for small n and k.
-When n and k are both large (maybe `8 < n`)
-and `k << n` (maybe `k < c*sqrt(n)` for some c)
-it should be easy to efficiently construct a conformation and sequence
-that meets a parity upper bound, but these constructions
-are not implemented here.
+
+The "Plan C" difficulty may depend on n and k.
+Intuitively, the idea is that we want to wrap a 2d core of k
+hydrophobic residues using a perimeter of n-k polar residues.
+Using an analogy, "Plan C" is like gift-wrapping a present
+of a given volume k using wrapping paper with surface area sqrt(n-k)
+in a way that exposes as little of the gift as possible.
+When the amount of wrapping paper is very small,
+then the problem is easy because you can just tape the scrap of paper
+onto the side of the present and it is pretty clear that you can't do better.
+When the amount of wrapping paper is very large,
+then the problem is also easy because you can easily wrap the entire
+present by just haphazardly stuffing the present into a huge ball of paper.
+But for intermediate relative amounts of wrapping paper
+the details of the problem become more important and the problem is harder.
+For example maybe the wrapping paper has a certain geometry and you
+are not allowed to cut it.
+
+Using a diamond shaped core
+
+```
+   pp
+  phhp
+ phhhhp
+phhhhhhp
+phhhhhhp
+ phhhhp
+  phhp
+   pp
+```
+
+the formula relating perimeter and area is like
+
+```
+s = (n-k)/4
+k = 2*s*(s-1)
+n-k = 4*s
+```
+
+so `n-k ~= sqrt(8) sqrt(k)`.
+This analogy suggests that "Plan C" is probably hardest to solve
+when `n-k` is near `sqrt(8 k)`,
+but I don't know any rigorous analysis of its difficulty.
 
 ```
 $ gcc -o solve-brglez-plan-c solve-brglez-plan-c.c sparsetools.c subsetsum.c \
