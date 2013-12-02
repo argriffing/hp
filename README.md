@@ -141,7 +141,7 @@ k = 2*s*(s-1)
 n-k = 4*s
 ```
 
-so `n-k ~= sqrt(8) sqrt(k)`.
+so `n-k ~= sqrt(8 k)`.
 This analogy suggests that "Plan C" is probably hardest to solve
 when `n-k` is near `sqrt(8 k)`,
 but I don't know any rigorous analysis of its difficulty.
